@@ -42,7 +42,6 @@
 #include <ctime>
 
 #include <QWidget>
-#include <QSplashScreen>
 #include <QCoreApplication>
 #include <QMainWindow>
 #include <QLabel>
@@ -1649,27 +1648,6 @@ public:
 		return menu;
 	}
 };
-
-
-QSplashScreen *create_splash(){
-	// LuaDiant logo instead of the stock NetRadiant splash.svg
-	auto *splash = new QSplashScreen( new_local_image( "luadiant.png" ) );
-	splash->show();
-	return splash;
-}
-
-static QSplashScreen *splash_screen = 0;
-
-void show_splash(){
-	splash_screen = create_splash();
-
-	process_gui();
-}
-
-void hide_splash(){
-//.	splash_screen->finish();
-	delete splash_screen;
-}
 
 
 void user_shortcuts_init(){

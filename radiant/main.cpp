@@ -94,9 +94,6 @@
 #include <QApplication>
 #include "gtkutil/glwidget.h"
 
-void show_splash();
-void hide_splash();
-
 #if defined ( _DEBUG ) && defined ( WIN32 ) && defined ( _MSC_VER )
 #include "crtdbg.h"
 #endif
@@ -456,8 +453,6 @@ int main( int argc, char* argv[] ){
 	if ( !g_headless ) {
 		QApplication::setWindowIcon( new_local_icon( "luadiant.ico" ) ); // before any windows, after paths_init()
 
-		show_splash();
-
 		create_global_pid();
 	}
 
@@ -506,8 +501,6 @@ int main( int argc, char* argv[] ){
 //	user_shortcuts_init();
 
 	g_pParentWnd = new MainFrame();
-
-	hide_splash();
 
 	if( !g_openMapByCmd.empty() ){
 		Map_LoadFile( g_openMapByCmd.c_str() );
