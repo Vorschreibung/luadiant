@@ -62,7 +62,7 @@ inline QMessageBox::StandardButtons qt_buttons_for_mask( int buttons ){
 	return out;
 }
 
-EMessageBoxReturn qt_MessageBox( QWidget *parent, const char* text, const char* title /* = "NetRadiant" */, EMessageBoxType type /* = EMessageBoxType::Info */, int buttons /* = 0 */ ){
+EMessageBoxReturn qt_MessageBox( QWidget *parent, const char* text, const char* title /* = "LuaDiant" */, EMessageBoxType type /* = EMessageBoxType::Info */, int buttons /* = 0 */ ){
 	if ( !g_messagebox_interactive ) {
 		TextOutputStream& stream = type == EMessageBoxType::Error ? globalErrorStream()
 		                         : type == EMessageBoxType::Warning ? globalWarningStream()

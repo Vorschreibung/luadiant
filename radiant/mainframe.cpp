@@ -687,7 +687,7 @@ void Restart(){
 
 
 void OpenUpdateURL(){
-	OpenURL( "https://github.com/Garux/netradiant-custom/releases/latest" );
+	OpenURL( "https://github.com/Vorschreibung/luadiant/releases/latest" );
 #if 0
 	// build the URL
 	StringOutputStream URL( 256 );
@@ -1242,7 +1242,7 @@ void create_help_menu( QMenuBar *menubar ){
 	create_game_help_menu( menu );
 
 	create_menu_item_with_mnemonic( menu, "Bug report", makeCallbackF( OpenBugReportURL ) );
-	create_menu_item_with_mnemonic( menu, "Check for NetRadiant update", "CheckForUpdate" ); // FIXME
+	create_menu_item_with_mnemonic( menu, "Check for LuaDiant update", "CheckForUpdate" );
 	create_menu_item_with_mnemonic( menu, "&About", makeCallbackF( DoAbout ) );
 }
 

@@ -434,7 +434,8 @@ int main( int argc, char* argv[] ){
 	setlocale( LC_NUMERIC, "C" );
 	qInstallMessageHandler( qute_messageHandler );
 	QCoreApplication::setOrganizationName( "QtRadiant" );
-	QCoreApplication::setApplicationName( "NetRadiant-Custom" );
+	QCoreApplication::// own QSettings store, kept apart from upstream NetRadiant-custom installs
+	QCoreApplication::setApplicationName( "LuaDiant" );
 	QCoreApplication::setApplicationVersion( QT_VERSION_STR );
 
 	GlobalDebugMessageHandler::instance().setHandler( GlobalPopupDebugMessageHandler::instance() );
