@@ -7,4 +7,8 @@
 
 local luadiant = require "luadiant.core"
 
+local vec3 = require "luadiant.vec3"
+luadiant.vec3 = vec3.new
+luadiant.is_vec3 = vec3.is_vec3
+
 return luadiant

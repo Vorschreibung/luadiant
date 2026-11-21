@@ -948,7 +948,10 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/layerswindow.o \
 	radiant/mainframe.o \
 	radiant/lua/luaapi_core.o \
+	radiant/lua/luaapi_map.o \
+	radiant/lua/luaapi_scene.o \
 	radiant/lua/luaengine.o \
+	radiant/lua/luaundo.o \
 	radiant/main.o \
 	radiant/map.o \
 	radiant/modelwindow.o \

@@ -20,10 +20,13 @@
 
 #include "luaengine.h"
 #include "luaapi.h"
+#include "luaundo.h"
 
 #include <cstring>
 
 #include "itextstream.h"
+#include "os/path.h"
+#include "stream/stringstream.h"
 #include "../mainframe.h"
 
 namespace
@@ -80,6 +83,9 @@ int lua_setupModules( lua_State* L ){
 	lua_getfield( L, -1, "loaded" );
 	lua_newtable( L );
 	LuaApi_openCore( L );
+	LuaApi_openScene( L );
+	LuaApi_openMap( L );
+	LuaApi_openUndo( L );
 	lua_pushvalue( L, -1 );
 	lua_setfield( L, -3, "luadiant.core" );
 	// stack: package, loaded, core
@@ -236,7 +242,11 @@ bool LuaEngine_runFile( const char* path, const std::vector<std::string>& args, 
 		lua_pushlstring( L, arg.data(), arg.size() );
 	}
 
-	if ( !LuaEngine_pcall( L, static_cast<int>( args.size() ), 1, "Lua" ) ) {
+	// the script's changes are one undo operation, rolled back on errors
+	LuaUndo_enter( StringStream( "Lua: ", path_get_filename_start( path ) ) );
+	const bool success = LuaEngine_pcall( L, static_cast<int>( args.size() ), 1, "Lua" );
+	LuaUndo_leave( success );
+	if ( !success ) {
 		lua_settop( L, top );
 		return false;
 	}
@@ -261,7 +271,9 @@ bool LuaEngine_runString( const char* code, const char* chunkname ){
 		lua_settop( L, top );
 		return false;
 	}
+	LuaUndo_enter( StringStream( "Lua: ", chunkname ) );
 	const bool success = LuaEngine_pcall( L, 0, 0, "Lua" );
+	LuaUndo_leave( success );
 	lua_settop( L, top );
 	return success;
 }

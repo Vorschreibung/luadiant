@@ -27,6 +27,30 @@
 #pragma once
 
 #include "lua.hpp"
+#include "math/vectorfwd.h"
+
+namespace scene
+{
+class Node;
+}
 
 /// General functions: logging, paths, version and environment info.
 void LuaApi_openCore( lua_State* L );
+
+/// Node and face handles, object creation and selection; also creates
+/// the metatable of vectors.
+void LuaApi_openScene( lua_State* L );
+
+/// The luadiant.map table: loading, saving and the map's entities.
+void LuaApi_openMap( lua_State* L );
+
+/// Pushes a vector {x =, y =, z =} with the luadiant.vec3 metatable.
+void LuaApi_pushVector3( lua_State* L, double x, double y, double z );
+
+template<typename T>
+inline void LuaApi_pushVector( lua_State* L, const BasicVector3<T>& vector ){
+	LuaApi_pushVector3( L, vector.x(), vector.y(), vector.z() );
+}
+
+/// Pushes the handle of a node, the same handle as long as one exists.
+void LuaApi_pushNode( lua_State* L, scene::Node& node );

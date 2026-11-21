@@ -57,6 +57,8 @@ Q3MAP2_TIMEOUT_SEC = 600
 # they need neither downloaded gamepacks nor game data
 LUA_TESTS_DIR = ROOT / "tests" / "lua"
 LUA_TEST_GAMEPACKS = LUA_TESTS_DIR / "gamepack"
+# game data (textures etc.) copied into each test's engine directory
+LUA_TEST_ENGINE = LUA_TESTS_DIR / "engine"
 LUA_TEST_GAME = "luadiant-test"
 LUADIANT_TIMEOUT_SEC = 120
 
@@ -257,10 +259,11 @@ def make_regression_test(name):
 
 def run_headless(ctx, script, *args, options=()):
   """Run a Lua script with headless luadiant for the test game; the
-  engine path is an empty game directory in the test's directory and the
-  script gets that directory as its first argument."""
+  engine path is a copy of the test game data in the test's directory,
+  as the editor may write there, and the script gets that directory as
+  its first argument."""
   engine_path = ctx.workdir / "engine"
-  (engine_path / "base").mkdir(parents=True, exist_ok=True)
+  shutil.copytree(LUA_TEST_ENGINE, engine_path, dirs_exist_ok=True)
   cmd = [
     find_binary("luadiant"), "--headless", *options,
     "--gamepacks", LUA_TEST_GAMEPACKS, "--game", LUA_TEST_GAME,
