@@ -38,7 +38,6 @@
 
 #include "debugging/debugging.h"
 #include "version.h"
-#include "aboutmsg.h"
 
 #include "igl.h"
 #include "iscenegraph.h"
@@ -330,7 +329,7 @@ void DoSides( EBrushPrefab type ){
 
 void DoAbout(){
 	QDialog dialog( MainFrame_getWindow(), Qt::Dialog | Qt::WindowCloseButtonHint );
-	dialog.setWindowTitle( "About NetRadiant" );
+	dialog.setWindowTitle( "About LuaDiant" );
 
 	{
 		auto *vbox = new QVBoxLayout( &dialog );
@@ -348,9 +347,8 @@ void DoAbout(){
 			}
 
 			{
-				auto *label = new QLabel( "NetRadiant " RADIANT_VERSION "\n"
+				auto *label = new QLabel( "LuaDiant " RADIANT_VERSION "\n"
 				                         __DATE__ "\n\n"
-				                         RADIANT_ABOUTMSG "\n\n"
 				                         "This program is free software\n"
 				                         "licensed under the GNU GPL.\n"
 				                       );
@@ -365,10 +363,6 @@ void DoAbout(){
 					auto *button = buttons->addButton( "Credits", QDialogButtonBox::ButtonRole::NoRole );
 					QObject::connect( button, &QPushButton::clicked, [](){ OpenURL( StringStream( AppPath_get(), "credits.html" ) ); } );
 					button->setEnabled( false );
-				}
-				{
-					auto *button = buttons->addButton( "Changelog", QDialogButtonBox::ButtonRole::NoRole );
-					QObject::connect( button, &QPushButton::clicked, [](){ OpenURL( StringStream( AppPath_get(), "docs/changelog-custom.txt" ) ); } );
 				}
 				{
 					auto *button = buttons->addButton( "About Qt", QDialogButtonBox::ButtonRole::NoRole );
