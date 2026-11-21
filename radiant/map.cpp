@@ -62,6 +62,7 @@
 #include "preferences.h"
 #include "referencecache.h"
 #include "mru.h"
+#include "mapviews.h"
 #include "commands.h"
 #include "autosave.h"
 #include "brushmodule.h"
@@ -384,6 +385,11 @@ void Map_SetWorldspawn( Map& map, scene::Node* node ){
  */
 #include "modelwindow.h"
 void Map_Free(){
+	// remember where the user left this map, for when it's opened again
+	if ( !Map_Unnamed( g_map ) ) {
+		MapViews_store( g_map.m_name.c_str() );
+	}
+
 	Map_RegionOff();
 	Select_ShowAllHidden();
 
@@ -1022,8 +1028,10 @@ void Map_LoadFile( const char *filename ){
 
 	//GlobalEntityCreator().printStatistics();
 
-	/* move the view to a start position */
-	Map_StartPosition();
+	/* move the view to where the user left this map, else to a start position */
+	if ( !MapViews_restore( filename ) ) {
+		Map_StartPosition();
+	}
 
 	g_currentMap = &g_map;
 
@@ -1255,6 +1263,8 @@ bool Map_Save(){
 
 	ScopeTimer timer( "map save" );
 	SaveReferences();
+	// also remember the view on save, so it survives a crash
+	MapViews_store( g_map.m_name.c_str() );
 	return true; // assume success..
 }
 
@@ -2371,6 +2381,7 @@ void map_autocaulk_selected(){
 
 void Map_constructPreferences( PreferencesPage& page ){
 	page.appendCheckBox( "", "Load last map at startup", g_bLoadLastMap );
+	page.appendCheckBox( "", "Restore the last view position of each map", g_bRestoreMapViews );
 }
 
 
@@ -2449,6 +2460,7 @@ void Map_Construct(){
 
 	GlobalPreferenceSystem().registerPreference( "LastMap", CopiedStringImportStringCaller( g_strLastMap ), CopiedStringExportStringCaller( g_strLastMap ) );
 	GlobalPreferenceSystem().registerPreference( "LoadLastMap", BoolImportStringCaller( g_bLoadLastMap ), BoolExportStringCaller( g_bLoadLastMap ) );
+	GlobalPreferenceSystem().registerPreference( "RestoreMapViews", BoolImportStringCaller( g_bRestoreMapViews ), BoolExportStringCaller( g_bRestoreMapViews ) );
 
 	PreferencesDialog_addSettingsPreferences( makeCallbackF( Map_constructPreferences ) );
 

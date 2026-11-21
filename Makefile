@@ -955,6 +955,7 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/lua/luaundo.o \
 	radiant/main.o \
 	radiant/map.o \
+	radiant/mapviews.o \
 	radiant/modelwindow.o \
 	radiant/mru.o \
 	radiant/nullmodel.o \
