@@ -339,7 +339,8 @@ void DoAbout(){
 			vbox->addLayout( hbox );
 			{
 				auto *label = new QLabel;
-				auto pixmap = new_local_image( "logo.png" );
+				// LuaDiant logo instead of the stock NetRadiant logo.svg
+				auto pixmap = new_local_image( "luadiant.png" );
 				pixmap.setDevicePixelRatio( label->devicePixelRatio() );
 				// target 0.5 of the image size
 				label->setPixmap( pixmap.scaledToHeight( pixmap.height() * label->devicePixelRatio() * pixmap.logicalDpiX() / ( 96 * 2 ), Qt::TransformationMode::SmoothTransformation ) );

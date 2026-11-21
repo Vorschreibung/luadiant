@@ -1650,7 +1650,8 @@ public:
 
 
 QSplashScreen *create_splash(){
-	auto *splash = new QSplashScreen( new_local_image( "splash.png" ) );
+	// LuaDiant logo instead of the stock NetRadiant splash.svg
+	auto *splash = new QSplashScreen( new_local_image( "luadiant.png" ) );
 	splash->show();
 	return splash;
 }
