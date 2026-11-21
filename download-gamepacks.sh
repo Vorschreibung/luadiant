@@ -15,6 +15,23 @@
 
 set -e
 
+# Packs that are not contained in the all-in-one archive (NRCPack). They
+# are downloaded alongside it whenever LICENSEFILTER contains "allinone",
+# regardless of their own license.
+: ${ALLINONE_EXTRAS:=IGWPack}
+
+# in_list WORD LIST...: succeeds if WORD is one of the following words
+in_list()
+{
+	word=$1; shift
+	case " $* " in
+		*" $word "*)
+			return 0
+			;;
+	esac
+	return 1
+}
+
 extra_urls()
 {
 	if [ -f "$1/extra-urls.txt" ]; then
@@ -91,8 +108,12 @@ pack()
 		*" $license "*)
 			;;
 		*)
-			$ECHO "Pack $pack rejected because its license is not in LICENSEFILTER."
-			return
+			if in_list allinone $LICENSEFILTER && in_list "$pack" $ALLINONE_EXTRAS; then
+				$ECHO "Pack $pack accepted because the all-in-one archive does not contain it."
+			else
+				$ECHO "Pack $pack rejected because its license is not in LICENSEFILTER."
+				return
+			fi
 			;;
 	esac
 	case "$BATCH" in
@@ -200,5 +221,6 @@ pack WolfPack          proprietary svn    svn://svn.icculus.org/gtkradiant-gamep
 pack WoPPack           proprietary git    https://github.com/PadWorld-Entertainment/wop-mapeditor-support.git
 pack XonoticPack       GPL         git    https://gitlab.com/xonotic/netradiant-xonoticpack.git
 pack ZEQ2LitePack      unknown     git    https://gitlab.com/netradiant/gamepacks/zeq2lite-mapeditor-support.git
+pack IGWPack           proprietary git    https://github.com/reigw/reigw-gamepack.git
 
 pack NRCPack           allinone    zip1    https://www.dropbox.com/s/b1xpajzfa6yjlzf/netradiant-custom-extra-gamepacks.zip

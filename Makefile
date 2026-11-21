@@ -112,7 +112,7 @@ LUAJIT_MAKEFLAGS   ?=
 CPPFLAGS_LUAJIT    ?= -I$(LUAJIT_SRCDIR)
 LIBS_LUAJIT        ?= -lm
 DEPEND_ON_MAKEFILE ?= yes
-# yes = download; all = even download undistributable gamepacks; no = disable; allinone = dl all-in-one compact fixed archive
+# yes = download; all = even download undistributable gamepacks; no = disable; allinone = dl all-in-one compact fixed archive plus the packs it lacks (ALLINONE_EXTRAS in download-gamepacks.sh)
 DOWNLOAD_GAMEPACKS ?= allinone
 INSTALL_DLLS       ?= yes
 INSTALL_DATA       ?= yes
