@@ -1326,8 +1326,9 @@ int LoadMapFromBSP(struct quakefile_s *qf)
 		Q3_LoadMapFromBSP(qf);
 		Q3_FreeMaxBSP();
 	}
-	//Quake3 BSP file
-	else if (idheader.ident == Q3_BSP_IDENT && idheader.version == Q3_BSP_VERSION)
+	//Quake3 BSP file, or Iron Grip: Warlord's, which Q3_LoadBSPFile reads
+	//into Quake3's brush sides
+	else if (idheader.ident == Q3_BSP_IDENT && (idheader.version == Q3_BSP_VERSION || idheader.version == IGW_BSP_VERSION))
 	{
 		ResetMapLoading();
 		Q3_LoadMapFromBSP(qf);

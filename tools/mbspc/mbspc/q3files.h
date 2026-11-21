@@ -211,6 +211,10 @@ typedef struct {
 		// little-endian "IBSP"
 
 #define QL_BSP_VERSION			47
+
+// Iron Grip: Warlord: Quake III's layout but for 12 byte brush sides
+// (q3_dbrushside_igw_t)
+#define IGW_BSP_VERSION			48
 // ***********************************************************
 
 // there shouldn't be any problem with increasing these values at the
@@ -328,6 +332,14 @@ typedef struct {
 	int			planeNum;			// positive plane side faces out of the leaf
 	int			shaderNum;
 } q3_dbrushside_t;
+
+// Iron Grip: Warlord's brush side (IGW_BSP_VERSION): a flag word follows,
+// whose 0x400 marks a side structures can be built on; the AAS ignores it
+typedef struct {
+	int			planeNum;
+	int			shaderNum;
+	int			flags;
+} q3_dbrushside_igw_t;
 
 typedef struct {
 	int			firstSide;

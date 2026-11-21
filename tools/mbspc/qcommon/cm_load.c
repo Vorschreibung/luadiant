@@ -402,28 +402,34 @@ void CMod_LoadLeafSurfaces( lump_t *l )
 /*
 =================
 CMod_LoadBrushSides
+
+Iron Grip: Warlord's sides (BSP_VERSION_IGW) are 12 bytes, id's plane
+and shader numbers then a flag word, which is skipped: its only known
+bit marks buildable ground, a surface flag nothing in the AAS reads.
 =================
 */
-void CMod_LoadBrushSides (lump_t *l)
+void CMod_LoadBrushSides (lump_t *l, int version)
 {
 	int				i;
 	cbrushside_t	*out;
 	dbrushside_t 	*in;
 	int				count;
 	int				num;
+	int				size;
 
+	size = version == BSP_VERSION_IGW ? sizeof( dbrushside_igw_t ) : sizeof( dbrushside_t );
 	in = (void *)(cmod_base + l->fileofs);
-	if ( l->filelen % sizeof(*in) ) {
+	if ( l->filelen % size ) {
 		Com_Error (ERR_DROP, "MOD_LoadBmodel: funny lump size");
 	}
-	count = l->filelen / sizeof(*in);
+	count = l->filelen / size;
 
 	cm.brushsides = Hunk_Alloc( ( BOX_SIDES + count ) * sizeof( *cm.brushsides ), h_high );
 	cm.numBrushSides = count;
 
 	out = cm.brushsides;
 
-	for ( i=0 ; i<count ; i++, in++, out++) {
+	for ( i=0 ; i<count ; i++, in = (dbrushside_t *)( (byte *)in + size ), out++) {
 		num = LittleLong( in->planeNum );
 		out->plane = &cm.planes[num];
 		out->shaderNum = LittleLong( in->shaderNum );
@@ -626,9 +632,9 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 		((int *)&header)[i] = LittleLong ( ((int *)&header)[i]);
 	}
 
-	if ( header.version != BSP_VERSION && header.version != BSP_VERSION_QL ) {
-		Com_Error (ERR_DROP, "CM_LoadMap: %s has wrong version number (%i should be %i)"
-		, name, header.version, BSP_VERSION );
+	if ( header.version != BSP_VERSION && header.version != BSP_VERSION_QL && header.version != BSP_VERSION_IGW ) {
+		Com_Error (ERR_DROP, "CM_LoadMap: %s has wrong version number (%i should be %i, %i or %i)"
+		, name, header.version, BSP_VERSION, BSP_VERSION_QL, BSP_VERSION_IGW );
 	}
 
 	cmod_base = (byte *) buf.i;
@@ -639,7 +645,7 @@ void CM_LoadMap( const char *name, qboolean clientload, int *checksum ) {
 	CMod_LoadLeafBrushes (&header.lumps[LUMP_LEAFBRUSHES]);
 	CMod_LoadLeafSurfaces (&header.lumps[LUMP_LEAFSURFACES]);
 	CMod_LoadPlanes (&header.lumps[LUMP_PLANES]);
-	CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES]);
+	CMod_LoadBrushSides (&header.lumps[LUMP_BRUSHSIDES], header.version);
 	CMod_LoadBrushes (&header.lumps[LUMP_BRUSHES]);
 	CMod_LoadSubmodels (&header.lumps[LUMP_MODELS]);
 	CMod_LoadNodes (&header.lumps[LUMP_NODES]);

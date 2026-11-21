@@ -415,6 +415,9 @@ typedef struct {
 
 #define BSP_VERSION			46
 #define BSP_VERSION_QL			47 // quakelive :sss
+// Iron Grip: Warlord: Quake III's layout but for 12 byte brush sides, a
+// flag word after the shader number (see dbrushside_igw_t)
+#define BSP_VERSION_IGW			48
 
 // there shouldn't be any problem with increasing these values at the
 // expense of more memory allocation in the utilities
@@ -534,6 +537,14 @@ typedef struct {
 	int			planeNum;			// positive plane side faces out of the leaf
 	int			shaderNum;
 } dbrushside_t;
+
+// Iron Grip: Warlord's brush side (BSP_VERSION_IGW): flag 0x400 marks a
+// side structures can be built on, which the AAS has no use for
+typedef struct {
+	int			planeNum;
+	int			shaderNum;
+	int			flags;
+} dbrushside_igw_t;
 
 typedef struct {
 	int			firstSide;

@@ -565,6 +565,35 @@ int Q3_CopyLump( q3_dheader_t	*header, int lump, void **dest, int size ) {
 
 /*
 =============
+Q3_CopyIGWBrushSides
+
+Copies Iron Grip: Warlord's 12 byte brush sides into id's 8 byte ones,
+dropping the flag word (buildable ground, of no use to the AAS); the
+count of sides.
+=============
+*/
+static int Q3_CopyIGWBrushSides( q3_dheader_t *header ) {
+	q3_dbrushside_igw_t *in;
+	int length, count, i;
+
+	length = header->lumps[Q3_LUMP_BRUSHSIDES].filelen;
+	if ( length % sizeof( q3_dbrushside_igw_t ) ) {
+		Error( "Q3_LoadBSPFile: odd brush side lump size" );
+	}
+	count = length / sizeof( q3_dbrushside_igw_t );
+	in = (q3_dbrushside_igw_t *)( (byte *)header + header->lumps[Q3_LUMP_BRUSHSIDES].fileofs );
+
+	q3_dbrushsides = GetMemory( count * sizeof( q3_dbrushside_t ) );
+	for ( i = 0; i < count; i++ ) {
+		// still in file order; Q3_SwapBSPFile swaps them with the rest
+		q3_dbrushsides[i].planeNum = in[i].planeNum;
+		q3_dbrushsides[i].shaderNum = in[i].shaderNum;
+	}
+	return count;
+}
+
+/*
+=============
 CountTriangles
 =============
 */
@@ -607,8 +636,8 @@ void	Q3_LoadBSPFile(struct quakefile_s *qf)
 	if ( header->ident != Q3_BSP_IDENT && header->ident != QL_BSP_IDENT ) {
 		Error( "%s is not a IBSP file", qf->filename );
 	}
-	if ( header->version != Q3_BSP_VERSION && header->version != QL_BSP_VERSION ) {
-		Error( "%s is version %i, not (%i or %i)", qf->filename, header->version, Q3_BSP_VERSION, QL_BSP_VERSION );
+	if ( header->version != Q3_BSP_VERSION && header->version != QL_BSP_VERSION && header->version != IGW_BSP_VERSION ) {
+		Error( "%s is version %i, not (%i, %i or %i)", qf->filename, header->version, Q3_BSP_VERSION, QL_BSP_VERSION, IGW_BSP_VERSION );
 	}
 
 	q3_numShaders = Q3_CopyLump( header, Q3_LUMP_SHADERS, (void *) &q3_dshaders, sizeof(q3_dshader_t) );
@@ -619,7 +648,11 @@ void	Q3_LoadBSPFile(struct quakefile_s *qf)
 	q3_numleafsurfaces = Q3_CopyLump( header, Q3_LUMP_LEAFSURFACES, (void *) &q3_dleafsurfaces, sizeof(q3_dleafsurfaces[0]) );
 	q3_numleafbrushes = Q3_CopyLump( header, Q3_LUMP_LEAFBRUSHES, (void *) &q3_dleafbrushes, sizeof(q3_dleafbrushes[0]) );
 	q3_numbrushes = Q3_CopyLump( header, Q3_LUMP_BRUSHES, (void *) &q3_dbrushes, sizeof(q3_dbrush_t) );
-	q3_numbrushsides = Q3_CopyLump( header, Q3_LUMP_BRUSHSIDES, (void *) &q3_dbrushsides, sizeof(q3_dbrushside_t) );
+	if ( header->version == IGW_BSP_VERSION ) {
+		q3_numbrushsides = Q3_CopyIGWBrushSides( header );
+	} else {
+		q3_numbrushsides = Q3_CopyLump( header, Q3_LUMP_BRUSHSIDES, (void *) &q3_dbrushsides, sizeof(q3_dbrushside_t) );
+	}
 	q3_numDrawVerts = Q3_CopyLump( header, Q3_LUMP_DRAWVERTS, (void *) &q3_drawVerts, sizeof(q3_drawVert_t) );
 	q3_numDrawSurfaces = Q3_CopyLump( header, Q3_LUMP_SURFACES, (void *) &q3_drawSurfaces, sizeof(q3_dsurface_t) );
 	q3_numFogs = Q3_CopyLump( header, Q3_LUMP_FOGS, (void *) &q3_dfogs, sizeof(q3_dfog_t) );
