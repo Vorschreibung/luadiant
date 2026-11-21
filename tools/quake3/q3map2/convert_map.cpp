@@ -306,7 +306,23 @@ static void bspBrush_to_buildBrush( const bspBrush_t& brush ){
 		/* tag it */
 		buildBrush.sides.back().shaderInfo = &ShaderInfoForShader( shader.shader );
 		buildBrush.sides.back().planenum = side.planeNum;
+		/* only canbuild matters to the decompiled face (DecompiledFaceFlags) */
+		buildBrush.sides.back().compileFlags = side.compileFlags & C_CANBUILD;
 	}
+}
+
+/*
+   DecompiledFaceFlags()
+   the content flags to write for a decompiled face beyond the detail bit:
+   Iron Grip: Warlord's per face canbuild, when the side is buildable but its
+   shader alone does not make it so (the stock maps' blend-map terrain)
+ */
+
+static int DecompiledFaceFlags( const side_t& side ){
+	if ( ( side.compileFlags & C_CANBUILD ) && !( side.shaderInfo->compileFlags & C_CANBUILD ) ) {
+		return IGW_CANBUILD;
+	}
+	return 0;
 }
 
 static void ConvertBrushFast( FILE *f, int bspBrushNum, const Vector3& origin, EBrushType brushType ){
@@ -337,6 +353,9 @@ static void ConvertBrushFast( FILE *f, int bspBrushNum, const Vector3& origin, E
 			continue;
 		}
 
+		/* the face's own flags; the fast mode does not look for detail */
+		const int faceContentFlags = DecompiledFaceFlags( buildSide );
+
 		/* get texture name */
 		const char *texture = striEqualPrefix( buildSide.shaderInfo->shader, "textures/" )
 		                      ? buildSide.shaderInfo->shader + 9
@@ -358,25 +377,28 @@ static void ConvertBrushFast( FILE *f, int bspBrushNum, const Vector3& origin, E
 			         pts[ 2 ][ 0 ], pts[ 2 ][ 1 ], pts[ 2 ][ 2 ]
 			       );
 			if ( brushType == EBrushType::Quake ) {
-				fprintf( f, "%s %.8f %.8f %.8f %.8f %.8f 0 0 0\n",
+				fprintf( f, "%s %.8f %.8f %.8f %.8f %.8f %d 0 0\n",
 				         texture,
-				         0.0f, 0.0f, 0.0f, 0.5f, 0.5f
+				         0.0f, 0.0f, 0.0f, 0.5f, 0.5f,
+				         faceContentFlags
 				       );
 			}
 			else if ( brushType == EBrushType::Valve220 ) {
 				Vector3 texX, texY;
 				ComputeAxisBase( buildPlane.normal(), texX, texY );
-				fprintf( f, "%s [ %.8f %.8f %.8f %.8f ] [ %.8f %.8f %.8f %.8f ] 0 0.5 0.5 0 0 0\n",
+				fprintf( f, "%s [ %.8f %.8f %.8f %.8f ] [ %.8f %.8f %.8f %.8f ] 0 0.5 0.5 %d 0 0\n",
 				         texture,
 				         texX.x(), texX.y(), texX.z(), 0.f,
-				         texY.x(), texY.y(), texY.z(), 0.f
+				         texY.x(), texY.y(), texY.z(), 0.f,
+				         faceContentFlags
 				       );
 			}
 			else if ( brushType == EBrushType::Bp ) {
-				fprintf( f, "( ( %.8f %.8f %.8f ) ( %.8f %.8f %.8f ) ) %s 0 0 0\n",
+				fprintf( f, "( ( %.8f %.8f %.8f ) ( %.8f %.8f %.8f ) ) %s %d 0 0\n",
 				         1.0f / 32.0f, 0.0f, 0.0f,
 				         0.0f, 1.0f / 32.0f, 0.0f,
-				         texture
+				         texture,
+				         faceContentFlags
 				       );
 			}
 		}
@@ -433,6 +455,9 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 		if ( buildSide.shaderInfo == nullptr || buildSide.winding.empty() ) {
 			continue;
 		}
+
+		/* the detail bit and the face's own flags */
+		const int faceContentFlags = contentFlag | DecompiledFaceFlags( buildSide );
 
 		// st-texcoords -> texMat block
 		// start out with dummy
@@ -571,7 +596,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 					         buildSide.texMat[0][0], buildSide.texMat[0][1], FRAC( buildSide.texMat[0][2] ),
 					         buildSide.texMat[1][0], buildSide.texMat[1][1], FRAC( buildSide.texMat[1][2] ),
 					         texture,
-					         contentFlag
+					         faceContentFlags
 					       );
 				}
 				else if( brushType == EBrushType::Valve220 ){
@@ -590,7 +615,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 					         basis_s.x(), basis_s.y(), basis_s.z(), shift[0],
 					         basis_t.x(), basis_t.y(), basis_t.z(), shift[1],
 					         scale[0], scale[1],
-					         contentFlag
+					         faceContentFlags
 					       );
 				}
 			}
@@ -697,7 +722,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 				fprintf( f, "%s %.8f %.8f %.8f %.8f %.8f %d 0 0\n",
 				         texture,
 				         shift[0], shift[1], rotate, scale[0], scale[1],
-				         contentFlag
+				         faceContentFlags
 				       );
 			}
 		}
@@ -716,7 +741,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 				fprintf( f, "%s %.8f %.8f %.8f %.8f %.8f %d 0 0\n",
 				         texture,
 				         0.0f, 0.0f, 0.0f, 0.25f, 0.25f,
-				         contentFlag
+				         faceContentFlags
 				       );
 			}
 			else if ( brushType == EBrushType::Valve220 ) {
@@ -726,7 +751,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 				         texture,
 				         texX.x(), texX.y(), texX.z(), 0.f,
 				         texY.x(), texY.y(), texY.z(), 0.f,
-				         contentFlag
+				         faceContentFlags
 				       );
 			}
 			else if ( brushType == EBrushType::Bp ) {
@@ -734,7 +759,7 @@ static void ConvertBrush( FILE *f, int bspBrushNum, const Vector3& origin, EBrus
 				         1.0f / 16.0f, 0.0f, 0.0f,
 				         0.0f, 1.0f / 16.0f, 0.0f,
 				         texture,
-				         contentFlag
+				         faceContentFlags
 				       );
 			}
 		}

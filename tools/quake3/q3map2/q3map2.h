@@ -302,6 +302,7 @@ struct bspBrushSide_t
 	int planeNum;                   /* positive plane side faces out of the leaf */
 	int shaderNum;
 	int surfaceNum;                 /* RBSP */
+	int compileFlags = 0;           /* C_* flags of the side; only written by Iron Grip's 12 byte IBSP sides */
 };
 
 

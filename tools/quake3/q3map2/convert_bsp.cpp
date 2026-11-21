@@ -125,7 +125,7 @@ int AnalyzeBSP( Args& args ){
 		{ sizeof( bspPlane_t ),         6,      "IBSP LUMP_PLANES" },
 		{ sizeof( bspBrush_t ),         1,      "IBSP LUMP_BRUSHES" },
 		{ 8,                            6,      "IBSP LUMP_BRUSHSIDES" },
-		{ sizeof( bspBrushSide_t ),     6,      "RBSP LUMP_BRUSHSIDES" },
+		{ 12,                           6,      "RBSP LUMP_BRUSHSIDES" },
 		{ sizeof( bspModel_t ),         1,      "IBSP LUMP_MODELS" },
 		{ sizeof( bspNode_t ),          2,      "IBSP LUMP_NODES" },
 		{ sizeof( bspLeaf_t ),          1,      "IBSP LUMP_LEAFS" },

@@ -76,6 +76,23 @@ struct rbspHeader_t
 
 
 
+/* brush sides: the file layout, now that bspBrushSide_t also holds compile flags */
+struct rbspBrushSide_t
+{
+	int planeNum;
+	int shaderNum;
+	int surfaceNum;
+	rbspBrushSide_t( const bspBrushSide_t& other ) :
+		planeNum  ( other.planeNum ),
+		shaderNum ( other.shaderNum ),
+		surfaceNum( other.surfaceNum ){}
+	operator bspBrushSide_t() const {
+		return { planeNum, shaderNum, surfaceNum };
+	}
+};
+
+
+
 /* light grid */
 #define MAX_MAP_GRID        0xffff
 #define MAX_MAP_GRIDARRAY   0x100000
@@ -205,7 +222,7 @@ void LoadRBSPFile( const char *filename ){
 	CopyLump( (bspHeader_t*) header, LUMP_LEAFSURFACES, bspLeafSurfaces );
 	CopyLump( (bspHeader_t*) header, LUMP_LEAFBRUSHES, bspLeafBrushes );
 	CopyLump( (bspHeader_t*) header, LUMP_BRUSHES, bspBrushes );
-	CopyLump( (bspHeader_t*) header, LUMP_BRUSHSIDES, bspBrushSides );
+	CopyLump<bspBrushSide_t, rbspBrushSide_t>( (bspHeader_t*) header, LUMP_BRUSHSIDES, bspBrushSides );
 	CopyLump( (bspHeader_t*) header, LUMP_DRAWVERTS, bspDrawVerts );
 	CopyLump( (bspHeader_t*) header, LUMP_SURFACES, bspDrawSurfaces );
 	CopyLump( (bspHeader_t*) header, LUMP_FOGS, bspFogs );
@@ -250,7 +267,7 @@ void WriteRBSPFile( const char *filename ){
 	AddLump( file, header.lumps[LUMP_LEAFS], bspLeafs );
 	AddLump( file, header.lumps[LUMP_NODES], bspNodes );
 	AddLump( file, header.lumps[LUMP_BRUSHES], bspBrushes );
-	AddLump( file, header.lumps[LUMP_BRUSHSIDES], bspBrushSides );
+	AddLump( file, header.lumps[LUMP_BRUSHSIDES], std::vector<rbspBrushSide_t>( bspBrushSides.begin(), bspBrushSides.end() ) );
 	AddLump( file, header.lumps[LUMP_LEAFSURFACES], bspLeafSurfaces );
 	AddLump( file, header.lumps[LUMP_LEAFBRUSHES], bspLeafBrushes );
 	AddLump( file, header.lumps[LUMP_MODELS], bspModels );

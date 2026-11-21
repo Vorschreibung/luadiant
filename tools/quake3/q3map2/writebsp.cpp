@@ -374,6 +374,8 @@ void EmitBrushes( entity_t& e ){
 			side.outputNum = bspBrushSides.size();
 			bspBrushSide_t& cp = bspBrushSides.emplace_back();
 			cp.planeNum = side.planenum;
+			/* kept for formats storing them per side (Iron Grip: Warlord) */
+			cp.compileFlags = side.compileFlags;
 
 			/* emit shader */
 			if ( side.shaderInfo ) {

@@ -89,6 +89,25 @@ struct ibspBrushSide_t
 	}
 };
 
+/* Iron Grip: Warlord's brush sides: id's two fields, then a flag word.
+   The stock maps hold the side's compile flags in it as q3map2 has them,
+   but with canbuild on IGW_CANBUILD (stock C_FOG; they have no fog), the
+   one bit the engine reads (CMod_LoadBrushSides) */
+struct igwBrushSide_t
+{
+	int planeNum;
+	int shaderNum;
+	int flags;
+	igwBrushSide_t( const bspBrushSide_t& other ) :
+		planeNum ( other.planeNum ),
+		shaderNum( other.shaderNum ),
+		/* fog must not land on the canbuild bit */
+		flags    ( ( other.compileFlags & ~( C_FOG | C_CANBUILD ) ) | ( ( other.compileFlags & C_CANBUILD ) ? IGW_CANBUILD : 0 ) ){}
+	operator bspBrushSide_t() const {
+		return { planeNum, shaderNum, -1, ( flags & ~IGW_CANBUILD ) | ( ( flags & IGW_CANBUILD ) ? C_CANBUILD : 0 ) };
+	}
+};
+
 
 
 /* drawsurfaces */
@@ -239,7 +258,12 @@ void LoadIBSPFile( const char *filename ){
 	CopyLump( (bspHeader_t*) header, LUMP_LEAFSURFACES, bspLeafSurfaces );
 	CopyLump( (bspHeader_t*) header, LUMP_LEAFBRUSHES, bspLeafBrushes );
 	CopyLump( (bspHeader_t*) header, LUMP_BRUSHES, bspBrushes );
-	CopyLump<bspBrushSide_t, ibspBrushSide_t>( (bspHeader_t*) header, LUMP_BRUSHSIDES, bspBrushSides );
+	if ( g_game->igwBrushSides ) {
+		CopyLump<bspBrushSide_t, igwBrushSide_t>( (bspHeader_t*) header, LUMP_BRUSHSIDES, bspBrushSides );
+	}
+	else{
+		CopyLump<bspBrushSide_t, ibspBrushSide_t>( (bspHeader_t*) header, LUMP_BRUSHSIDES, bspBrushSides );
+	}
 	CopyLump<bspDrawVert_t, ibspDrawVert_t>( (bspHeader_t*) header, LUMP_DRAWVERTS, bspDrawVerts );
 	CopyLump<bspDrawSurface_t, ibspDrawSurface_t>( (bspHeader_t*) header, LUMP_SURFACES, bspDrawSurfaces );
 	CopyLump( (bspHeader_t*) header, LUMP_FOGS, bspFogs );
@@ -323,7 +347,12 @@ void WriteIBSPFile( const char *filename ){
 	AddLump( file, header.lumps[LUMP_LEAFS], bspLeafs );
 	AddLump( file, header.lumps[LUMP_NODES], bspNodes );
 	AddLump( file, header.lumps[LUMP_BRUSHES], bspBrushes );
-	AddLump( file, header.lumps[LUMP_BRUSHSIDES], std::vector<ibspBrushSide_t>( bspBrushSides.begin(), bspBrushSides.end() ) );
+	if ( g_game->igwBrushSides ) {
+		AddLump( file, header.lumps[LUMP_BRUSHSIDES], std::vector<igwBrushSide_t>( bspBrushSides.begin(), bspBrushSides.end() ) );
+	}
+	else{
+		AddLump( file, header.lumps[LUMP_BRUSHSIDES], std::vector<ibspBrushSide_t>( bspBrushSides.begin(), bspBrushSides.end() ) );
+	}
 	AddLump( file, header.lumps[LUMP_LEAFSURFACES], bspLeafSurfaces );
 	AddLump( file, header.lumps[LUMP_LEAFBRUSHES], bspLeafBrushes );
 	AddLump( file, header.lumps[LUMP_MODELS], bspModels );

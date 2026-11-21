@@ -47,6 +47,8 @@ TARGET_ALIASES = {
 # model) and the q3map2 regression test maps
 SMOKE_TEST_DIR = ROOT / "tests" / "q3map2" / "smoke"
 REGRESSION_TESTS_DIR = ROOT / "regression_tests" / "q3map2"
+# Standalone q3map2 test scripts, run with the q3map2 binary to test
+Q3MAP2_TEST_SCRIPTS = [ROOT / "tools" / "test_q3map2_igw.py"]
 
 # Generous upper limit for a single q3map2 invocation in the tests, so a
 # hanging compile fails the test instead of blocking forever
@@ -248,6 +250,19 @@ def test_smoke(q3map2):
     raise TestFailure(f"expected 7 drawsurfaces, got {match.group(1)}")
 
 
+def make_q3map2_script_test(script):
+  """Runs a standalone q3map2 test script in the test's directory; it
+  passes if the script exits with 0."""
+  def test(ctx):
+    cmd = [sys.executable, script, "--q3map2", find_binary("q3map2"), "--workdir", ctx.workdir]
+    if ctx.verbose:
+      cmd.append("-v")
+    proc = ctx.run(cmd, Q3MAP2_TIMEOUT_SEC)
+    if proc.returncode != 0:
+      raise TestFailure(f"exit code {proc.returncode}: {script.name}")
+  return test
+
+
 def make_regression_test(name):
   """The regression test maps are meant for manual inspection of specific
   issues, there is no reference output to compare with; so just make sure
@@ -336,6 +351,8 @@ def collect_tests():
   """Returns (name, test function, binaries it needs) of all tests; test
   functions take a TestContext."""
   tests = [("q3map2/smoke", q3map2_test(SMOKE_TEST_DIR / "baseq3", test_smoke), "q3map2")]
+  for script in Q3MAP2_TEST_SCRIPTS:
+    tests.append((f"q3map2/{script.stem[len('test_q3map2_'):]}", make_q3map2_script_test(script), "q3map2"))
   for test_dir in sorted(p for p in REGRESSION_TESTS_DIR.iterdir() if p.is_dir()):
     tests.append((f"q3map2/regression/{test_dir.name}",
                   q3map2_test(test_dir, make_regression_test(test_dir.name)), "q3map2"))

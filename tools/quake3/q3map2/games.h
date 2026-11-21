@@ -47,7 +47,14 @@ const int C_ANTIPORTAL           = 0x00004000;  /* like hint, but doesn't genera
 const int C_SKIP                 = 0x00008000;  /* like hint, but skips this face (doesn't split bsp) */
 const int C_NOMARKS              = 0x00010000;  /* no decals */
 const int C_OB                   = 0x00020000;  /* skip -noob for this */
+const int C_CANBUILD             = 0x00040000;  /* Iron Grip: Warlord: structures may be built on this face */
 const int C_DETAIL               = 0x08000000;  /* THIS MUST BE THE SAME AS IN RADIANT! */
+
+/* Iron Grip: Warlord's canbuild bit: the same value is the content flag of
+   "surfaceparm canbuild", the bit of a .map face's content flags that marks
+   just that face buildable, and the bit of the brush side flag word that the
+   engine turns into surface flag 0x80000 on a trace hitting that side */
+const int IGW_CANBUILD           = 0x00000400;
 
 
 /* ydnar: for multiple game support */
@@ -108,6 +115,7 @@ struct game_t
 	bspFunc load, write;                                /* load/write function pointers */
 	std::vector<surfaceParm_t> surfaceParms;            /* surfaceparm array */
 	int brushBevelsSurfaceFlagsMask;                    /* apply only these surfaceflags to bevels to reduce extra bsp shaders amount; applying them to get correct physics at walkable brush edges and vertices */
+	bool igwBrushSides = false;                         /* Iron Grip: Warlord: 12 byte IBSP brush sides with a flag word, and IGW_CANBUILD faces in .map files */
 };
 
 extern const std::vector<game_t> g_games;

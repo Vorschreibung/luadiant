@@ -225,6 +225,28 @@ struct game_quakelive : game_default
 	}
 };
 
+/* Iron Grip: Warlord (Isotx): Quake III's flags and compile, but IBSP
+   version 48 whose brush sides carry a flag word (see igwBrushSides) */
+struct game_igw : game_default
+{
+	/* contents only blocking NPCs; clears solid and compiles like botclip,
+	   as the npc_clip sides of the stock maps show (translucent, no solid) */
+	static const int IGW_CONT_NPCCLIP           = 0x800;
+
+	game_igw(){
+		arg = "igw";
+		gamePath = "base";
+		homeBasePath = ".igwarlord";
+		magic = "iron grip";
+		bspVersion = 48;
+		igwBrushSides = true;
+		surfaceParms.insert( surfaceParms.end(), {
+		{ "canbuild",       IGW_CANBUILD,               0,                          0,                          0,                          C_CANBUILD,                 0 },
+		{ "npcclip",        IGW_CONT_NPCCLIP,           Q_CONT_SOLID,               0,                          0,                          C_TRANSLUCENT,              C_SOLID },
+		} );
+	}
+};
+
 struct game_nexuiz : game_default
 {
 	game_nexuiz(){
@@ -938,5 +960,6 @@ const std::vector<game_t> g_games = { game_quake3(),
                                       game_sof2(),
                                       game_jk2(),
                                       game_ja(),
+                                      game_igw(),
                                     };
 const game_t *g_game = &g_games[0];

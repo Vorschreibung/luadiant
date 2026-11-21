@@ -313,6 +313,7 @@ static void write_json( const char *directory ){
 			value.AddMember( "planeNum", side.planeNum, all );
 			value.AddMember( "shaderNum", side.shaderNum, all );
 			value.AddMember( "surfaceNum", side.surfaceNum, all );
+			value.AddMember( "compileFlags", side.compileFlags, all );
 			doc.AddMember( rapidjson::Value( StringStream<16>( "BrushSide#", i ).c_str(), all ), value, all );
 		}
 		write_doc( StringStream( directory, "BrushSides.json" ), doc );
@@ -555,6 +556,10 @@ static void read_json( const char *directory, bool useFlagNames, bool skipUnknow
 			item.planeNum = obj.value["planeNum"].GetInt();
 			item.shaderNum = obj.value["shaderNum"].GetInt();
 			item.surfaceNum = obj.value["surfaceNum"].GetInt();
+			/* optional: json written before brush sides kept them has none */
+			if ( const auto it = obj.value.FindMember( "compileFlags" ); it != obj.value.MemberEnd() ) {
+				item.compileFlags = it->value.GetInt();
+			}
 		}
 	}
 	{

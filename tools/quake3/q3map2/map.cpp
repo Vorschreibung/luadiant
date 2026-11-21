@@ -1094,6 +1094,11 @@ static void ParseRawBrush( bool onlyLights ){
 			if ( flags & C_DETAIL ) {
 				side.compileFlags |= C_DETAIL;
 			}
+			/* Iron Grip: Warlord: a face marked buildable on its own, whatever its
+			   shader, as the stock maps' blend-map terrain is in places */
+			if ( g_game->igwBrushSides && ( flags & IGW_CANBUILD ) ) {
+				side.compileFlags |= C_CANBUILD;
+			}
 
 			/* historical */
 			GetToken( false );
