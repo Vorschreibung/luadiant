@@ -232,8 +232,13 @@ ddsColor_t;
 
 
 
+/* size of the magic plus the DDSURFACEDESC2 header; image data starts here */
+#define DDS_HEADER_SIZE 128
+
+
 /* public functions */
 int                     DDSGetInfo( ddsBuffer_t *dds, int *width, int *height, ddsPF_t *pf );
+int                     DDSCheckLength( ddsBuffer_t *dds, size_t length );
 int                     DDSDecompress( ddsBuffer_t *dds, unsigned char *pixels );
 
 

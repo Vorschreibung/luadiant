@@ -64,8 +64,9 @@ static void LoadDDSBuffer( byte *buffer, int size, byte **pixels, int *width, in
 	*width = 0;
 	*height = 0;
 
-	/* get dds info */
-	if ( DDSGetInfo( (ddsBuffer_t*) buffer, &w, &h, &pf ) ) {
+	/* get dds info; DDSGetInfo() does not know the buffer length, so first
+	   make sure the header and the top mip level are actually in the buffer */
+	if ( DDSCheckLength( (ddsBuffer_t*) buffer, size ) || DDSGetInfo( (ddsBuffer_t*) buffer, &w, &h, &pf ) ) {
 		Sys_Warning( "Invalid DDS texture\n" );
 		return;
 	}

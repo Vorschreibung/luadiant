@@ -30,9 +30,14 @@
 #include "ddslib.h"
 #include "imagelib.h"
 
-Image* LoadDDSBuff( const byte* buffer ){
+Image* LoadDDSBuff( const byte* buffer, std::size_t length ){
 	int width, height;
 	ddsPF_t pixelFormat;
+	// DDSGetInfo() does not know the buffer length, so first make sure the
+	// header and the top mip level are actually in the buffer
+	if ( buffer == nullptr || DDSCheckLength( reinterpret_cast<ddsBuffer_t*>( const_cast<byte*>( buffer ) ), length ) != 0 ) {
+		return 0;
+	}
 	if ( DDSGetInfo( reinterpret_cast<ddsBuffer_t*>( const_cast<byte*>( buffer ) ), &width, &height, &pixelFormat ) == -1 ) {
 		return 0;
 	}
@@ -48,5 +53,5 @@ Image* LoadDDSBuff( const byte* buffer ){
 
 Image* LoadDDS( ArchiveFile& file ){
 	ScopedArchiveBuffer buffer( file );
-	return LoadDDSBuff( buffer.buffer );
+	return LoadDDSBuff( buffer.buffer, buffer.length );
 }

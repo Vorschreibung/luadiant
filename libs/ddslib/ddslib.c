@@ -176,7 +176,18 @@ int DDSGetInfo( ddsBuffer_t *dds, int *width, int *height, ddsPF_t *pf ){
 	if ( *( (int*) dds->magic ) != *( (int*) "DDS " ) ) {
 		return -1;
 	}
-	if ( DDSLittleLong( dds->size ) != 124 ) {
+	/* the spec says dwSize is always 124, but Iron Grip: Warlord's exporter
+	   wrote the total file length there for most of its textures (and its
+	   renderer accepts any value), so also accept anything that is at least
+	   a full header; the data always starts right after the 128-byte header
+	   (dds->data) and is never located through this field */
+	if ( DDSLittleLong( dds->size ) != 124 && (unsigned int) DDSLittleLong( dds->size ) < DDS_HEADER_SIZE ) {
+		return -1;
+	}
+
+	/* the pixel format struct is fixed-size in every valid file, which still
+	   rejects junk now that the dwSize test above is relaxed */
+	if ( DDSLittleLong( dds->pixelFormat.size ) != 32 ) {
 		return -1;
 	}
 
@@ -190,6 +201,71 @@ int DDSGetInfo( ddsBuffer_t *dds, int *width, int *height, ddsPF_t *pf ){
 
 	/* get pixel format */
 	DDSDecodePixelFormat( dds, pf );
+
+	/* return ok */
+	return 0;
+}
+
+
+
+/*
+   DDSCheckLength()
+   validates the header of a dds buffer of the given length and checks that
+   the buffer covers the top mip level, so DDSDecompress() cannot read past
+   its end; returns 0 on success
+ */
+
+int DDSCheckLength( ddsBuffer_t *dds, size_t length ){
+	int width, height;
+	ddsPF_t pf;
+	unsigned long long w, h, needed;
+
+
+	/* the header itself must be there before any of it is read */
+	if ( dds == NULL || length < DDS_HEADER_SIZE ) {
+		return -1;
+	}
+	if ( DDSGetInfo( dds, &width, &height, &pf ) ) {
+		return -1;
+	}
+
+	/* the dimensions are unsigned in the file; values that wrap to a
+	   non-positive int are junk */
+	if ( width <= 0 || height <= 0 ) {
+		return -1;
+	}
+	w = (unsigned long long) width;
+	h = (unsigned long long) height;
+
+	/* size of the top mip level, in the 64-bit range so that huge junk
+	   dimensions cannot overflow into a small value */
+	switch ( pf )
+	{
+	case DDS_PF_DXT1:
+		needed = ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * 8;
+		break;
+
+	case DDS_PF_DXT2:
+	case DDS_PF_DXT3:
+	case DDS_PF_DXT4:
+	case DDS_PF_DXT5:
+		needed = ( ( w + 3 ) / 4 ) * ( ( h + 3 ) / 4 ) * 16;
+		break;
+
+	case DDS_PF_ARGB8888:
+		/* DDSDecompressARGB8888() reads 4 bytes per pixel */
+		needed = w * h * 4;
+		break;
+
+	default:
+		/* nothing is read for unknown formats */
+		needed = 0;
+		break;
+	}
+
+	if ( (unsigned long long) ( length - DDS_HEADER_SIZE ) < needed ) {
+		return -1;
+	}
 
 	/* return ok */
 	return 0;
@@ -677,6 +753,11 @@ static int DDSDecompressDXT4( ddsBuffer_t *dds, int width, int height, unsigned 
 }
 
 
+
+/*
+   DDSDecompressARGB8888()
+   decompresses an argb 8888 format texture
+ */
 
 /*
    DDSDecompressARGB8888()
