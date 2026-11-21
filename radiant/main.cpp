@@ -452,7 +452,7 @@ int main( int argc, char* argv[] ){
 	Sys_LogFile( true );
 
 	if ( !g_headless ) {
-		QApplication::setWindowIcon( new_local_icon( "radiant.ico" ) ); // before any windows, after paths_init()
+		QApplication::setWindowIcon( new_local_icon( "luadiant.ico" ) ); // before any windows, after paths_init()
 
 		show_splash();
 

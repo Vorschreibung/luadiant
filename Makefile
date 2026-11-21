@@ -1006,7 +1006,7 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	libquickhull.$(A) \
 	libxmllib.$(A) \
 	$(LUAJIT_SRCDIR)/libluajit.a \
-	$(if $(findstring Win32,$(OS)),icons/radiant.o,) \
+	$(if $(findstring Win32,$(OS)),icons/luadiant.o,) \
 
 libfilematch.$(A): CPPFLAGS_EXTRA := -Ilibs
 libfilematch.$(A): \
