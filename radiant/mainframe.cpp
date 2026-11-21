@@ -53,6 +53,10 @@
 #include <QBoxLayout>
 #include <QCloseEvent>
 #include <QSettings>
+#include <QPainter>
+#include <QPointer>
+#include <QElapsedTimer>
+#include <QOpenGLWidget>
 #include <QGroupBox>
 #include <QDialogButtonBox>
 #include <QPushButton>
@@ -763,33 +767,6 @@ public:
 s_qe_every_second_timer;
 
 
-class WaitDialog
-{
-public:
-	QWidget* m_window;
-	QLabel* m_label;
-};
-
-WaitDialog create_wait_dialog( const char* title, const char* text ){
-	/* Qt::Tool window type doesn't steal focus, which saves e.g. from losing freelook camera mode on autosave
-	   or entity menu from hiding, while clicked with ctrl, by tex/model loading popup.
-	   Qt::WidgetAttribute::WA_ShowWithoutActivating is implied, but lets have it set too. */
-	auto *window = new QWidget( MainFrame_getWindow(), Qt::Tool | Qt::WindowTitleHint );
-	window->setWindowTitle( title );
-	window->setWindowModality( Qt::WindowModality::ApplicationModal );
-	window->setAttribute( Qt::WidgetAttribute::WA_ShowWithoutActivating );
-
-	auto *label = new QLabel( text );
-	{
-		auto *box = new QHBoxLayout( window );
-		box->setSizeConstraint( QLayout::SizeConstraint::SetFixedSize );
-		box->setContentsMargins( 20, 5, 20, 3 );
-		box->addWidget( label );
-		label->setMinimumWidth( 200 );
-	}
-	return WaitDialog{ .m_window = window, .m_label = label };
-}
-
 namespace
 {
 clock_t g_lastRedrawTime = 0;
@@ -803,11 +780,164 @@ bool redrawRequired(){
 	}
 	return false;
 }
+
+// message and title of one ScopeDisableScreenUpdates, innermost last
+struct WaitMessage
+{
+	CopiedString message;
+	CopiedString title;
+};
+std::vector<WaitMessage> g_wait_stack;
+
+// operations shorter than this show no overlay, so e.g. autosaves don't flash the views
+const int c_overlayDelayMs = 300;
+
+/* Black cover over a render view while screen updates are disabled. The view
+   doesn't redraw meanwhile, so whatever it shows would be stale or a half
+   built scene. */
+class BusyOverlay : public QWidget
+{
+public:
+	BusyOverlay( QWidget *view ) : QWidget( view ){
+		setGeometry( view->rect() );
+		view->installEventFilter( this ); // to follow the view's size
+		show();
+	}
+protected:
+	bool eventFilter( QObject *watched, QEvent *event ) override {
+		if ( watched == parentWidget() && event->type() == QEvent::Resize ) {
+			setGeometry( parentWidget()->rect() );
+		}
+		return false;
+	}
+	void paintEvent( QPaintEvent* ) override {
+		QPainter painter( this );
+		painter.fillRect( rect(), Qt::GlobalColor::black );
+		if ( g_wait_stack.empty() ) { // not expected, the overlays go away along with the last message
+			return;
+		}
+		painter.setPen( Qt::GlobalColor::white );
+
+		// the message large in the middle, the operation (e.g. "Loading Map") below it
+		const WaitMessage& wait = g_wait_stack.back();
+		QFont font = painter.font();
+		font.setPointSizeF( font.pointSizeF() * 1.5 );
+		painter.setFont( font );
+		const int lineHeight = painter.fontMetrics().height();
+		painter.drawText( rect().adjusted( 0, 0, 0, -lineHeight ), Qt::AlignCenter, wait.message.c_str() );
+		painter.setFont( QWidget::font() );
+		painter.drawText( rect().adjusted( 0, lineHeight, 0, 0 ), Qt::AlignCenter, wait.title.c_str() );
+	}
+};
+
+/* Discards user input to the whole application while screen updates are
+   disabled. The operations pump events to keep the console and the overlays
+   updated, and a click or shortcut run from in there would act on a half
+   loaded or half saved map. QEventLoop::ExcludeUserInputEvents isn't enough,
+   as it only defers that input until the operation is done. */
+class BusyInputFilter : public QObject
+{
+protected:
+	bool eventFilter( QObject *watched, QEvent *event ) override {
+		// a modal dialog opened by the operation itself (e.g. an error message) must
+		// stay usable, and Qt already blocks the input to all other windows for it
+		if ( QApplication::activeModalWidget() != nullptr ) {
+			return false;
+		}
+		switch ( event->type() )
+		{
+		// sent internally for key presses, which reach the shortcut map before any filter sees them
+		case QEvent::Type::Shortcut:
+			return true;
+		case QEvent::Type::MouseButtonPress:
+		case QEvent::Type::MouseButtonRelease:
+		case QEvent::Type::MouseButtonDblClick:
+		case QEvent::Type::MouseMove:
+		case QEvent::Type::NonClientAreaMouseButtonPress:
+		case QEvent::Type::NonClientAreaMouseButtonRelease:
+		case QEvent::Type::NonClientAreaMouseButtonDblClick:
+		case QEvent::Type::NonClientAreaMouseMove:
+		case QEvent::Type::Wheel:
+		case QEvent::Type::KeyPress:
+		case QEvent::Type::KeyRelease:
+		case QEvent::Type::ContextMenu:
+		case QEvent::Type::TouchBegin:
+		case QEvent::Type::TouchUpdate:
+		case QEvent::Type::TouchEnd:
+		case QEvent::Type::TabletPress:
+		case QEvent::Type::TabletMove:
+		case QEvent::Type::TabletRelease:
+		case QEvent::Type::DragEnter:
+		case QEvent::Type::DragMove:
+		case QEvent::Type::Drop:
+		case QEvent::Type::Close: // closing a window from the window manager
+			// only what comes from the user, the operation may send such events itself
+			return event->spontaneous();
+		default:
+			return false;
+		}
+	}
+};
+
+// set while the outermost operation runs with the editor UI up (not headless)
+bool g_busy_ui = false;
+QElapsedTimer g_busy_timer;
+BusyInputFilter *g_busy_input_filter = nullptr;
+bool g_busy_overlays_shown = false;
+std::vector<QPointer<BusyOverlay>> g_busy_overlays;
+
+// every visible render view, in the main window as well as in floating windows
+std::vector<QOpenGLWidget*> visible_render_views(){
+	std::vector<QOpenGLWidget*> views;
+	for ( QWidget *window : QApplication::topLevelWidgets() ) {
+		for ( QOpenGLWidget *view : window->findChildren<QOpenGLWidget*>() ) {
+			// findChildren also descends into child windows, they are handled by their own iteration
+			if ( view->window() == window && view->isVisible() ) {
+				views.push_back( view );
+			}
+		}
+	}
+	return views;
 }
 
-typedef std::list<CopiedString> StringStack;
-StringStack g_wait_stack;
-WaitDialog g_wait;
+void busy_overlays_show(){
+	g_busy_overlays_shown = true;
+	for ( QOpenGLWidget *view : visible_render_views() ) {
+		g_busy_overlays.emplace_back( new BusyOverlay( view ) );
+	}
+}
+
+/* Redraws all render views once the operation is over. Their paintGL() did
+   nothing meanwhile, and nothing else asks for a redraw afterwards, so they
+   would keep showing an empty frame until the next interaction. The camera
+   and 2D views also need to be told that their scene changed, a plain
+   repaint would only show their old frame. */
+void render_views(){
+	UpdateAllWindows();
+	for ( QOpenGLWidget *view : visible_render_views() ) {
+		view->update();
+		/* Repainting just the view leaves the pixels of the deleted overlay in
+		   the window's backing store on top of it, only a repaint of the whole
+		   window clears them. Multiple requests per window get merged by Qt. */
+		view->window()->update();
+	}
+}
+
+void busy_overlays_update(){
+	if ( !g_busy_overlays_shown ) {
+		if ( g_busy_timer.elapsed() >= c_overlayDelayMs ) {
+			busy_overlays_show();
+		}
+	}
+	else {
+		for ( auto& overlay : g_busy_overlays ) {
+			if ( overlay ) { // the view may have been destroyed meanwhile
+				overlay->update();
+			}
+		}
+	}
+}
+}
 
 bool ScreenUpdates_Enabled(){
 	return g_wait_stack.empty();
@@ -815,48 +945,59 @@ bool ScreenUpdates_Enabled(){
 
 void ScreenUpdates_process(){
 	if ( redrawRequired() ) {
+		if ( g_busy_ui ) {
+			busy_overlays_update();
+		}
 		process_gui();
 	}
 }
 
 
 void ScreenUpdates_Disable( const char* message, const char* title ){
+	const bool outermost = g_wait_stack.empty();
+	g_wait_stack.push_back( WaitMessage{ message, title } );
+
 	if ( MainFrame_getWindow() == nullptr ) { // headless, nothing to show
-		g_wait_stack.push_back( message );
 		return;
 	}
-	if ( g_wait_stack.empty() ) {
+	if ( outermost ) {
 		s_qe_every_second_timer.disable();
 
+		// pending work of the editor still runs normally, before the operation starts
 		process_gui();
 
-		g_wait = create_wait_dialog( title, message );
-
-		g_wait.m_window->show();
+		g_busy_ui = true;
+		g_busy_timer.start();
+		g_busy_input_filter = new BusyInputFilter;
+		QCoreApplication::instance()->installEventFilter( g_busy_input_filter );
+	}
+	if ( g_busy_ui ) {
 		ScreenUpdates_process();
 	}
-	else {
-		g_wait.m_window->setWindowTitle( title );
-		g_wait.m_label->setText( message );
-		ScreenUpdates_process();
-	}
-	g_wait_stack.push_back( message );
 }
 
 void ScreenUpdates_Enable(){
 	ASSERT_MESSAGE( !ScreenUpdates_Enabled(), "screen updates already enabled" );
 	g_wait_stack.pop_back();
-	if ( g_wait.m_window == nullptr ) { // headless, no wait dialog was shown
+	if ( !g_busy_ui ) { // headless, or started before the main window existed
 		return;
 	}
 	if ( g_wait_stack.empty() ) {
 		s_qe_every_second_timer.enable();
 
-		delete std::exchange( g_wait.m_window, nullptr );
+		for ( auto& overlay : g_busy_overlays ) {
+			delete overlay.data();
+		}
+		g_busy_overlays.clear();
+		g_busy_overlays_shown = false;
+
+		delete std::exchange( g_busy_input_filter, nullptr ); // also removes it from the application
+		g_busy_ui = false;
+
+		render_views();
 	}
 	else {
-		g_wait.m_label->setText( g_wait_stack.back().c_str() );
-		ScreenUpdates_process();
+		ScreenUpdates_process(); // show the outer operation's text again
 	}
 }
 
