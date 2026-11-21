@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: Also create a GitHub release with the built binaries
+        type: boolean
+        default: false
+
+# Only the release job needs more than read access, it asks for it itself
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: Build & test (Linux x86_64)
+    runs-on: ubuntu-24.04
+    outputs:
+      name: ${{ steps.meta.outputs.name }}
+      tag: ${{ steps.meta.outputs.tag }}
+    env:
+      # Whether this run builds a release; inputs.release is unset outside
+      # of workflow_dispatch, so this is 'false' for pushes and PRs
+      RELEASE: ${{ github.event_name == 'workflow_dispatch' && inputs.release }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get -y install --no-install-recommends \
+          build-essential git pkg-config unzip wget \
+          qtbase5-dev libglib2.0-dev libxml2-dev libpng-dev libjpeg-dev \
+          zlib1g-dev libgl-dev mesa-common-dev
+
+    - name: Determine names
+      id: meta
+      run: |
+        # Base the release name on the version in the Makefile plus the
+        # date and commit, so every release gets a unique tag
+        version=$(sed -n 's/^RADIANT_VERSION_NUMBER *= *//p' Makefile)
+        [ -n "$version" ] || { echo "::error::no RADIANT_VERSION_NUMBER in Makefile"; exit 1; }
+        tag="v${version}-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+        echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        echo "name=luadiant-${tag#v}-linux-x86_64" >> "$GITHUB_OUTPUT"
+
+    - name: Build
+      run: |
+        # The gamepacks are downloaded from an external host, so only
+        # bundle them for releases, to not make every CI run depend on it
+        if [ "$RELEASE" = true ]; then gamepacks=allinone; else gamepacks=no; fi
+        ./dev.py build all DOWNLOAD_GAMEPACKS="$gamepacks"
+
+        # download-gamepacks.sh ignores failed downloads, so make sure a
+        # release doesn't silently end up without any gamepacks
+        if [ "$RELEASE" = true ] && ! compgen -G "install/gamepacks/games/*.game" > /dev/null; then
+          echo "::error::no gamepacks were installed"
+          exit 1
+        fi
+
+    - name: Test
+      run: ./dev.py test --no-build
+
+    - name: Package
+      env:
+        NAME: ${{ steps.meta.outputs.name }}
+      run: |
+        # Archive the install directory below a top-level directory named
+        # like the archive; tar keeps the permissions and the symlinks
+        mkdir dist
+        cp -a install "dist/$NAME"
+        tar -C dist -czf "$NAME.tar.gz" "$NAME"
+        sha256sum "$NAME.tar.gz" > "$NAME.tar.gz.sha256"
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.meta.outputs.name }}
+        path: |
+          ${{ steps.meta.outputs.name }}.tar.gz
+          ${{ steps.meta.outputs.name }}.tar.gz.sha256
+        if-no-files-found: error
+
+  release:
+    name: Create release
+    if: github.event_name == 'workflow_dispatch' && inputs.release
+    needs: linux
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      NAME: ${{ needs.linux.outputs.name }}
+      TAG: ${{ needs.linux.outputs.tag }}
+
+    steps:
+    - uses: actions/download-artifact@v4
+      with:
+        name: ${{ needs.linux.outputs.name }}
+
+    - name: Verify artifacts
+      run: |
+        for f in "$NAME.tar.gz" "$NAME.tar.gz.sha256"; do
+          [ -s "$f" ] || { echo "::error::missing artifact $f"; exit 1; }
+        done
+        sha256sum -c "$NAME.tar.gz.sha256"
+
+    - name: Create release
+      run: |
+        set -euo pipefail
+
+        # Never touch an existing release or tag, the cleanup below would
+        # otherwise delete it
+        if gh release view "$TAG" > /dev/null 2>&1 \
+          || gh api "repos/$GH_REPO/git/refs/tags/$TAG" > /dev/null 2>&1; then
+          echo "::error::release or tag $TAG already exists"
+          exit 1
+        fi
+
+        # Create the release as a draft including all assets and only
+        # publish it (which also creates the tag) once everything has been
+        # uploaded, so a failed upload never leaves a partial release
+        # behind; a left over draft is removed again
+        trap 'gh release delete "$TAG" --yes --cleanup-tag || true' ERR
+        gh release create "$TAG" --draft \
+          --target "$GITHUB_SHA" \
+          --title "luadiant $TAG" \
+          --notes "Linux x86_64 build of $GITHUB_SHA." \
+          "$NAME.tar.gz" "$NAME.tar.gz.sha256"
+        gh release edit "$TAG" --draft=false
