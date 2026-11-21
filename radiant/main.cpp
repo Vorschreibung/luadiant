@@ -86,6 +86,7 @@
 #include "referencecache.h"
 #include "stacktrace.h"
 #include "error.h"
+#include "lua/luaengine.h"
 
 #include <QApplication>
 #include "gtkutil/glwidget.h"
@@ -450,6 +451,9 @@ int main( int argc, char* argv[] ){
 
 	Radiant_Initialise();
 
+	// before the main window, so Lua plugins can register their commands
+	LuaEngine_create( false );
+
 //	user_shortcuts_init();
 
 	g_pParentWnd = new MainFrame();
@@ -480,6 +484,8 @@ int main( int argc, char* argv[] ){
 	delete g_pParentWnd;
 
 //	user_shortcuts_save();
+
+	LuaEngine_destroy();
 
 	Radiant_Shutdown();
 
