@@ -139,7 +139,8 @@ public:
 		Destroy();
 	}
 	bool visible() const {
-		return GetWidget()->isVisible();
+		// the window is never constructed in headless mode
+		return GetWidget() != nullptr && GetWidget()->isVisible();
 	}
 	void queueDraw(){
 		if ( visible() ) {

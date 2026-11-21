@@ -986,12 +986,16 @@ public:
 	}
 	void realise() override {
 		if ( --m_unrealised == 0 ) {
-			if ( lightingEnabled() ) {
-				g_bumpGLSL.create();
-				g_depthFillGLSL.create();
-			}
+			// headless mode realises the shaders without OpenGL, just to
+			// know their textures and their sizes
+			if ( GlobalOpenGL().contextValid ) {
+				if ( lightingEnabled() ) {
+					g_bumpGLSL.create();
+					g_depthFillGLSL.create();
+				}
 
-			g_skyboxGLSL.create();
+				g_skyboxGLSL.create();
+			}
 
 			for ( auto& shader : m_shaders )
 			{

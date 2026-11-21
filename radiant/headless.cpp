@@ -25,7 +25,10 @@
 #include <string>
 #include <vector>
 
+#include "ientity.h"
+#include "irender.h"
 #include "map.h"
+#include "textures.h"
 #include "lua/luaengine.h"
 
 bool g_headless = false;
@@ -156,7 +159,19 @@ bool Headless_quiet(){
 }
 
 int Headless_run(){
+	// the entity module notifies about key changes through a callback that
+	// only the entity inspector window sets, which does not exist headless
+	GlobalEntityCreator().setKeyValueChangedFunc( [](){} );
+
+	// the editor realises shaders and textures once OpenGL is available;
+	// brushes need them for their texture sizes, so it happens without
+	// OpenGL here, only loading the images
+	GlobalShaderCache().realise();
+	Textures_Realise();
+
 	if ( !LuaEngine_create( true ) ) {
+		Textures_Unrealise();
+		GlobalShaderCache().unrealise();
 		return 1;
 	}
 
@@ -168,6 +183,8 @@ int Headless_run(){
 	// handles held by Lua reference scene nodes, release them first
 	LuaEngine_destroy();
 	Map_Free();
+	Textures_Unrealise();
+	GlobalShaderCache().unrealise();
 
 	std::fflush( stdout );
 	return exitCode;

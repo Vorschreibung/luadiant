@@ -1267,6 +1267,9 @@ public:
 		texFree();
 	}
 	void texAlloc( const char* text, const Vector3& color01 ){
+		// without OpenGL (headless mode) there is nothing to render to
+		if( !GlobalOpenGL().contextValid )
+			return;
 		gl().glGenTextures( 1, &tex );
 		if( tex > 0 ){
 			const BasicVector3<unsigned char> colour = color01 * 255.f;

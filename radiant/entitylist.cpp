@@ -80,7 +80,8 @@ public:
 	}
 
 	bool visible() const {
-		return m_window->isVisible();
+		// the window is never constructed in headless mode
+		return m_window != nullptr && m_window->isVisible();
 	}
 };
 

@@ -182,6 +182,11 @@ void LoadTextureRGBA( qtexture_t* q, unsigned char* pPixels, int nWidth, int nHe
 	q->color[1] = total[1] / ( nCount * 255 );
 	q->color[2] = total[2] / ( nCount * 255 );
 
+	// headless mode only needs the texture sizes and colours
+	if ( !GlobalOpenGL().contextValid ) {
+		return;
+	}
+
 	gl().glGenTextures( 1, &q->texture_number );
 
 	gl().glBindTexture( GL_TEXTURE_2D, q->texture_number );
@@ -342,7 +347,7 @@ void qtexture_realise( qtexture_t& texture, const TextureKey& key ){
 				globalErrorStream() << "Texture load failed: " << Quoted( key.second ) << '\n';
 			}
 		}
-		else {
+		else if ( GlobalOpenGL().contextValid ) { // skyboxes are only rendered, nothing to do headless
 			Image *images[6]{};
 			/* load in order, so that Q3 cubemap is seamless in openGL, but rotated & flipped; fix misorientation in shader later */
 			const char *suffixes[] = { "_ft", "_bk", "_up", "_dn", "_rt", "_lf" };
@@ -536,7 +541,9 @@ public:
 			}
 
 
-			gl().glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_tex_size );
+			if ( GlobalOpenGL().contextValid ) { // headless mode has no OpenGL
+				gl().glGetIntegerv( GL_MAX_TEXTURE_SIZE, &max_tex_size );
+			}
 			if ( max_tex_size == 0 ) {
 				max_tex_size = 1024;
 			}

@@ -779,7 +779,12 @@ void Preferences_Load(){
 	globalOutputStream() << "loading local preferences from " << g_Preferences.m_inipath << '\n';
 
 	if ( !Preferences_Load( g_preferences, g_Preferences.m_inipath.c_str(), g_GamesDialog.m_sGameFile.m_value.c_str() ) ) {
-		globalWarningStream() << "failed to load local preferences from " << g_Preferences.m_inipath << '\n';
+		// headless runs commonly have no settings at all (e.g. in CI), which
+		// is nothing to warn about, unlike an unreadable file
+		TextOutputStream& stream = g_headless && !file_exists( g_Preferences.m_inipath.c_str() )
+		                           ? globalOutputStream()
+		                           : globalWarningStream();
+		stream << "failed to load local preferences from " << g_Preferences.m_inipath << '\n';
 	}
 }
 
