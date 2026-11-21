@@ -10,7 +10,7 @@ command away:
   ./dev.py run [ARG...]                      run the built luadiant
   ./dev.py q3map2 [ARG...]                   run the built q3map2
   ./dev.py format [FILE...]                  uncrustify C/C++ sources
-  ./dev.py clean                             remove build artifacts
+  ./dev.py clean                             remove build artifacts and gamepacks
 
 Run './dev.py <command> --help' for the details of each command.
 """
@@ -133,7 +133,13 @@ def cmd_build(args):
 
 
 def cmd_clean(args):
+  # games/ only holds the gamepacks the build downloads, so it goes too
+  # and the next build fetches them afresh
   make(["clean"], jobs=1)
+  games = ROOT / "games"
+  if games.exists():
+    log(f"removing the downloaded gamepacks in {games.relative_to(ROOT)}/")
+    shutil.rmtree(games)
 
 
 # ---------------------------------------------------------------------------
@@ -503,7 +509,12 @@ def main():
   p.add_argument("--check", action="store_true", help="only check, don't modify files")
   p.set_defaults(func=cmd_format)
 
-  p = sub.add_parser("clean", help="remove build artifacts (make clean)")
+  p = sub.add_parser(
+    "clean", help="remove build artifacts and downloaded gamepacks",
+    description="Run 'make clean' (objects, binaries and the install "
+    "directory) and remove the gamepacks downloaded to games/, so the next "
+    "build fetches them afresh.",
+  )
   p.set_defaults(func=cmd_clean)
 
   # Pass all arguments of the passthrough commands on verbatim; argparse
