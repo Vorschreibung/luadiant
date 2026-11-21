@@ -51,6 +51,10 @@ lua_State* LuaEngine_state();
 /// True if luadiant runs without user interface (--headless).
 bool LuaEngine_isHeadless();
 
+/// True while Lua code runs, i.e. inside LuaEngine_pcall(); entry points
+/// triggered from the event loop (actions, reloading) must not start then.
+bool LuaEngine_running();
+
 /// Message handler for lua_pcall which appends a stack traceback to the
 /// error message, unless the message already carries one (errors which were
 /// re-raised after being caught by a nested handler).

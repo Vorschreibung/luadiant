@@ -951,6 +951,7 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/lua/luaapi_map.o \
 	radiant/lua/luaapi_scene.o \
 	radiant/lua/luaengine.o \
+	radiant/lua/luaplugins.o \
 	radiant/lua/luaundo.o \
 	radiant/main.o \
 	radiant/map.o \

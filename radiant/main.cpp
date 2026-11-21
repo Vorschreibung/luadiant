@@ -87,6 +87,7 @@
 #include "stacktrace.h"
 #include "error.h"
 #include "lua/luaengine.h"
+#include "lua/luaplugins.h"
 #include "headless.h"
 #include "console.h"
 
@@ -495,8 +496,11 @@ int main( int argc, char* argv[] ){
 		return exitCode;
 	}
 
-	// before the main window, so Lua plugins can register their commands
-	LuaEngine_create( false );
+	// before the main window, so the commands of Lua plugins exist when
+	// the shortcuts are loaded and the menus are built
+	if ( LuaEngine_create( false ) ) {
+		LuaPlugins_loadAll();
+	}
 
 //	user_shortcuts_init();
 

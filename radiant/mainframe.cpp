@@ -96,6 +96,7 @@
 #include "plugin.h"
 #include "pluginmanager.h"
 #include "pluginmenu.h"
+#include "lua/luaplugins.h"
 #include "plugintoolbar.h"
 #include "preferences.h"
 #include "qe3.h"
@@ -1258,6 +1259,7 @@ void create_main_menu( QMenuBar *menubar, MainFrame::EViewStyle style ){
 	if ( !string_equal( g_pGameDescription->getKeyValue( "no_patch" ), "1" ) )
 		create_patch_menu( menubar );
 	create_plugins_menu( menubar );
+	LuaPlugins_createMenu( menubar );
 	create_help_menu( menubar );
 }
 
@@ -2095,6 +2097,8 @@ void MainFrame_Construct(){
 	GlobalCommands_insert( "RefreshReferences", makeCallbackF( RefreshReferences ) );
 	GlobalCommands_insert( "CheckForUpdate", makeCallbackF( OpenUpdateURL ) );
 	GlobalCommands_insert( "Exit", makeCallbackF( Exit ) );
+
+	LuaPlugins_registerCommands();
 
 	GlobalCommands_insert( "Shortcuts", makeCallbackF( DoCommandListDlg ), QKeySequence( "Ctrl+Shift+P" ) );
 	GlobalCommands_insert( "Preferences", makeCallbackF( PreferencesDialog_showDialog ), QKeySequence( "P" ) );

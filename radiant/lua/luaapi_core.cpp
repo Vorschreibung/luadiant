@@ -23,9 +23,15 @@
 #include "luaapi.h"
 #include "luaengine.h"
 
+#include <algorithm>
 #include <cstdio>
+#include <cstring>
+#include <string>
+#include <vector>
 
 #include "itextstream.h"
+#include "os/dir.h"
+#include "os/file.h"
 #include "../mainframe.h"
 #include "../preferences.h"
 
@@ -150,6 +156,33 @@ int l_script_directories( lua_State* L ){
 	return 1;
 }
 
+/// luadiant.list_directory( path ): the names of the entries of a
+/// directory, sorted, without "." and ".."; nil and a message if it
+/// cannot be read.
+int l_list_directory( lua_State* L ){
+	const char* path = luaL_checkstring( L, 1 );
+	if ( !file_is_directory( path ) ) {
+		lua_pushnil( L );
+		lua_pushfstring( L, "%s: not a directory", path );
+		return 2;
+	}
+
+	std::vector<std::string> names;
+	Directory_forEach( path, [&names]( const char* name ){
+		if ( std::strcmp( name, "." ) != 0 && std::strcmp( name, ".." ) != 0 ) {
+			names.emplace_back( name );
+		}
+	} );
+	std::sort( names.begin(), names.end() );
+
+	lua_createtable( L, static_cast<int>( names.size() ), 0 );
+	for ( std::size_t i = 0; i < names.size(); ++i ){
+		lua_pushlstring( L, names[i].data(), names[i].size() );
+		lua_rawseti( L, -2, static_cast<int>( i + 1 ) );
+	}
+	return 1;
+}
+
 const luaL_Reg c_coreFunctions[] = {
 	{ "log", l_log },
 	{ "warn", l_warn },
@@ -159,6 +192,7 @@ const luaL_Reg c_coreFunctions[] = {
 	{ "engine_path", l_engine_path },
 	{ "game", l_game },
 	{ "script_directories", l_script_directories },
+	{ "list_directory", l_list_directory },
 	{ nullptr, nullptr }
 };
 }

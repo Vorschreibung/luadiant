@@ -20,6 +20,7 @@
 
 #include "luaengine.h"
 #include "luaapi.h"
+#include "luaplugins.h"
 #include "luaundo.h"
 
 #include <cstring>
@@ -33,6 +34,8 @@ namespace
 {
 lua_State* g_luaState = nullptr;
 bool g_luaHeadless = false;
+/// nesting depth of LuaEngine_pcall()
+int g_luaCallDepth = 0;
 
 #ifdef WIN32
 const char* const c_nativeModuleSuffix = "?.dll";
@@ -86,6 +89,7 @@ int lua_setupModules( lua_State* L ){
 	LuaApi_openScene( L );
 	LuaApi_openMap( L );
 	LuaApi_openUndo( L );
+	LuaApi_openPlugins( L );
 	lua_pushvalue( L, -1 );
 	lua_setfield( L, -3, "luadiant.core" );
 	// stack: package, loaded, core
@@ -154,6 +158,7 @@ void LuaEngine_destroy(){
 	if ( g_luaState != nullptr ) {
 		lua_close( g_luaState );
 		g_luaState = nullptr;
+		LuaPlugins_stateClosed();
 	}
 }
 
@@ -163,6 +168,10 @@ lua_State* LuaEngine_state(){
 
 bool LuaEngine_isHeadless(){
 	return g_luaHeadless;
+}
+
+bool LuaEngine_running(){
+	return g_luaCallDepth > 0;
 }
 
 int LuaEngine_messageHandler( lua_State* L ){
@@ -193,7 +202,9 @@ bool LuaEngine_pcall( lua_State* L, int nargs, int nresults, const char* context
 	lua_pushcfunction( L, LuaEngine_messageHandler );
 	lua_insert( L, handlerIndex );
 
+	++g_luaCallDepth;
 	const int status = lua_pcall( L, nargs, nresults, handlerIndex );
+	--g_luaCallDepth;
 	lua_remove( L, handlerIndex );
 
 	if ( status != 0 ) {
