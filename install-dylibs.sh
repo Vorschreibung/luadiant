@@ -21,7 +21,7 @@ finkgetdeps()
 }
 
 
-finkgetdeps "$INSTALLDIR/radiant.$EXE"
+finkgetdeps "$INSTALLDIR/luadiant.$EXE"
 echo Warning: this only works if only ONE version of gtk-2.0 and pango is installed
 
 getlib()
@@ -58,9 +58,9 @@ export FONTCONFIG_FILE="\$MY_DIRECTORY/Contents/MacOS/install/fonts.conf"
 
 cd "\$MY_DIRECTORY/Contents/MacOS/install"
 if [ -x /usr/bin/open-x11 ]; then
-	env LC_ALL="en_US.UTF-8" /usr/bin/open-x11 ./radiant.$EXE "$@" &
+	env LC_ALL="en_US.UTF-8" /usr/bin/open-x11 ./luadiant.$EXE "$@" &
 else
-	env LC_ALL="en_US.UTF-8" ./radiant.$EXE "$@" &
+	env LC_ALL="en_US.UTF-8" ./luadiant.$EXE "$@" &
 fi
 EOF
 

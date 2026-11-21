@@ -450,8 +450,8 @@ binaries-radiant-plugins: \
 
 .PHONY: binaries-radiant
 binaries-radiant-core: \
-	$(INSTALLDIR)/radiant.$(EXE) \
-	$(INSTALLDIR)/radiant \
+	$(INSTALLDIR)/luadiant.$(EXE) \
+	$(INSTALLDIR)/luadiant \
 
 .PHONY: binaries-tools
 binaries-tools: \
@@ -870,10 +870,10 @@ libwebplib.$(A): CPPFLAGS_EXTRA := -Ilibs
 libwebplib.$(A): \
 	libs/webplib/webplib.o \
 
-$(INSTALLDIR)/radiant.$(EXE): LDFLAGS_EXTRA := $(MWINDOWS)
-$(INSTALLDIR)/radiant.$(EXE): LIBS_EXTRA := $(LIBS_GL) $(LIBS_DL) $(LIBS_XML) $(LIBS_GLIB) $(LIBS_QTWIDGETS) $(LIBS_QTSVG) $(LIBS_ZLIB)
-$(INSTALLDIR)/radiant.$(EXE): CPPFLAGS_EXTRA := $(CPPFLAGS_GL) $(CPPFLAGS_DL) $(CPPFLAGS_XML) $(CPPFLAGS_GLIB) $(CPPFLAGS_QTWIDGETS) $(CPPFLAGS_QTSVG) -Ilibs -Iinclude
-$(INSTALLDIR)/radiant.$(EXE): \
+$(INSTALLDIR)/luadiant.$(EXE): LDFLAGS_EXTRA := $(MWINDOWS)
+$(INSTALLDIR)/luadiant.$(EXE): LIBS_EXTRA := $(LIBS_GL) $(LIBS_DL) $(LIBS_XML) $(LIBS_GLIB) $(LIBS_QTWIDGETS) $(LIBS_QTSVG) $(LIBS_ZLIB)
+$(INSTALLDIR)/luadiant.$(EXE): CPPFLAGS_EXTRA := $(CPPFLAGS_GL) $(CPPFLAGS_DL) $(CPPFLAGS_XML) $(CPPFLAGS_GLIB) $(CPPFLAGS_QTWIDGETS) $(CPPFLAGS_QTSVG) -Ilibs -Iinclude
+$(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/autosave.o \
 	radiant/brushmanip.o \
 	radiant/brushmodule.o \

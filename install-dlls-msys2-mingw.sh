@@ -4,7 +4,7 @@
 
 INSTALLDIR=`pwd`/install
 
-if [[ `file $INSTALLDIR/radiant.exe` == *"x86-64"* ]]; then
+if [[ `file $INSTALLDIR/luadiant.exe` == *"x86-64"* ]]; then
     MINGWDIR=/mingw64
 else
     MINGWDIR=/mingw32

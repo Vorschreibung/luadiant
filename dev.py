@@ -7,7 +7,7 @@ command away:
 
   ./dev.py build [TARGET...] [VAR=VALUE...]  build (default: everything)
   ./dev.py test [-k FILTER]                  build q3map2 and test it
-  ./dev.py run [ARG...]                      run the built radiant
+  ./dev.py run [ARG...]                      run the built luadiant
   ./dev.py q3map2 [ARG...]                   run the built q3map2
   ./dev.py format [FILE...]                  uncrustify C/C++ sources
   ./dev.py clean                             remove build artifacts
@@ -142,9 +142,9 @@ def exec_binary(name, argv, cwd=None):
 
 
 def cmd_run(argv):
-  # radiant finds its data relative to its own location, but run it from
+  # luadiant finds its data relative to its own location, but run it from
   # the install directory anyway, like users of a release would
-  exec_binary("radiant", argv, cwd=INSTALL_DIR)
+  exec_binary("luadiant", argv, cwd=INSTALL_DIR)
 
 
 def cmd_q3map2(argv):
@@ -352,7 +352,7 @@ def main():
 
   # Only registered for the help output, these commands are dispatched
   # before parsing, see PASSTHROUGH_COMMANDS
-  sub.add_parser("run", help="run the built radiant (needs './dev.py build'), "
+  sub.add_parser("run", help="run the built luadiant (needs './dev.py build'), "
                  "all arguments are passed on")
   sub.add_parser("q3map2", help="run the built q3map2, all arguments are passed on")
 

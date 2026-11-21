@@ -3,7 +3,7 @@ set -e
 
 APPDIR="NetRadiant-Custom.AppDir"
 APPNAME="NetRadiant-Custom"
-BINARY="radiant.x86_64"
+BINARY="luadiant.x86_64"
 DESKTOP="netradiantcustom.desktop"
 ICON="$BINARY"
 ICON_SRC="install/bitmaps/logo.svg"
