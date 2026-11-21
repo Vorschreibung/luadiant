@@ -104,6 +104,13 @@ CPPFLAGS_ZLIB      ?=
 LIBS_ZLIB          ?= -lz
 CPPFLAGS_JPEG      ?=
 LIBS_JPEG          ?= -ljpeg
+# LuaJIT is always built from the vendored source tree and linked
+# statically into luadiant; LUAJIT_MAKEFLAGS is passed on to LuaJIT's own
+# Makefile, e.g. for cross-compiling (HOST_CC=..., TARGET_SYS=...)
+LUAJIT_SRCDIR      ?= vendor/luajit/src
+LUAJIT_MAKEFLAGS   ?=
+CPPFLAGS_LUAJIT    ?= -I$(LUAJIT_SRCDIR)
+LIBS_LUAJIT        ?= -lm
 DEPEND_ON_MAKEFILE ?= yes
 # yes = download; all = even download undistributable gamepacks; no = disable; allinone = dl all-in-one compact fixed archive
 DOWNLOAD_GAMEPACKS ?= allinone
@@ -500,6 +507,7 @@ clean:
 	$(FIND) . \( -name \*.o -o -name \*.d -o -name \*.$(DLL) -o -name \*.$(A) -o -name \*.$(EXE) \) -exec $(RM) {} \;
 	$(RM_R) $(INSTALLDIR_BASE)/
 	$(RM) icons/*.rc
+	$(MAKE) -C $(LUAJIT_SRCDIR) clean
 
 %.$(EXE):
 	file=$@; $(MKDIR) $${file%/*}
@@ -512,6 +520,20 @@ $(INSTALLDIR)/%: $(INSTALLDIR)/%.$(EXE)
 %.$(A):
 	$(AR) rc $@ $^
 	$(RANLIB) $@
+
+# The static LuaJIT library is built by LuaJIT's own Makefile. It is
+# invoked on every build (FORCE), so changes below vendor/luajit are
+# picked up; that Makefile only rebuilds what actually changed, so the
+# library keeps its timestamp and luadiant is not relinked needlessly.
+# Variables given on our command line (e.g. BUILD=debug) must not leak
+# into it, as they may mean something else there, hence the empty
+# MAKEOVERRIDES; only CC is passed on explicitly.
+.PHONY: FORCE
+FORCE:
+
+$(LUAJIT_SRCDIR)/libluajit.a: MAKEOVERRIDES :=
+$(LUAJIT_SRCDIR)/libluajit.a: FORCE
+	$(MAKE) -C $(LUAJIT_SRCDIR) libluajit.a BUILDMODE=static CC="$(CC)" $(LUAJIT_MAKEFLAGS)
 
 %.$(DLL):
 	file=$@; $(MKDIR) $${file%/*}
@@ -871,8 +893,8 @@ libwebplib.$(A): \
 	libs/webplib/webplib.o \
 
 $(INSTALLDIR)/luadiant.$(EXE): LDFLAGS_EXTRA := $(MWINDOWS)
-$(INSTALLDIR)/luadiant.$(EXE): LIBS_EXTRA := $(LIBS_GL) $(LIBS_DL) $(LIBS_XML) $(LIBS_GLIB) $(LIBS_QTWIDGETS) $(LIBS_QTSVG) $(LIBS_ZLIB)
-$(INSTALLDIR)/luadiant.$(EXE): CPPFLAGS_EXTRA := $(CPPFLAGS_GL) $(CPPFLAGS_DL) $(CPPFLAGS_XML) $(CPPFLAGS_GLIB) $(CPPFLAGS_QTWIDGETS) $(CPPFLAGS_QTSVG) -Ilibs -Iinclude
+$(INSTALLDIR)/luadiant.$(EXE): LIBS_EXTRA := $(LIBS_GL) $(LIBS_DL) $(LIBS_XML) $(LIBS_GLIB) $(LIBS_QTWIDGETS) $(LIBS_QTSVG) $(LIBS_ZLIB) $(LIBS_LUAJIT)
+$(INSTALLDIR)/luadiant.$(EXE): CPPFLAGS_EXTRA := $(CPPFLAGS_GL) $(CPPFLAGS_DL) $(CPPFLAGS_XML) $(CPPFLAGS_GLIB) $(CPPFLAGS_QTWIDGETS) $(CPPFLAGS_QTSVG) $(CPPFLAGS_LUAJIT) -Ilibs -Iinclude
 $(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/autosave.o \
 	radiant/brushmanip.o \
@@ -970,6 +992,7 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	libl_net.$(A) \
 	libquickhull.$(A) \
 	libxmllib.$(A) \
+	$(LUAJIT_SRCDIR)/libluajit.a \
 	$(if $(findstring Win32,$(OS)),icons/radiant.o,) \
 
 libfilematch.$(A): CPPFLAGS_EXTRA := -Ilibs
