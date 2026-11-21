@@ -760,6 +760,53 @@ static int DDSDecompressDXT4( ddsBuffer_t *dds, int width, int height, unsigned 
  */
 
 /*
+   DDSMaskShift(), DDSMaskBits()
+   position of the lowest set bit and number of set bits of a channel mask
+ */
+
+static int DDSMaskShift( unsigned int mask ){
+	int shift = 0;
+	if ( mask == 0 ) {
+		return 0;
+	}
+	while ( !( mask & 1 ) ) {
+		mask >>= 1;
+		++shift;
+	}
+	return shift;
+}
+
+static int DDSMaskBits( unsigned int mask ){
+	int bits = 0;
+	for ( ; mask != 0; mask >>= 1 ) {
+		bits += mask & 1;
+	}
+	return bits;
+}
+
+
+
+/*
+   DDSExtractChannel()
+   extracts the channel selected by mask from a pixel and scales it to 8 bits
+ */
+
+static unsigned char DDSExtractChannel( unsigned int pixel, unsigned int mask, int shift, int bits ){
+	unsigned int value = ( pixel & mask ) >> shift;
+	if ( bits > 8 ) {
+		/* keep the most significant 8 bits */
+		return (unsigned char) ( value >> ( bits - 8 ) );
+	}
+	if ( bits < 8 ) {
+		/* stretch the full range of the channel to 0..255 */
+		return (unsigned char) ( value * 255 / ( ( 1u << bits ) - 1 ) );
+	}
+	return (unsigned char) value;
+}
+
+
+
+/*
    DDSDecompressARGB8888()
    decompresses an argb 8888 format texture
  */
@@ -767,11 +814,36 @@ static int DDSDecompressDXT4( ddsBuffer_t *dds, int width, int height, unsigned 
 static int DDSDecompressARGB8888( ddsBuffer_t *dds, int width, int height, unsigned char *pixels ){
 	int x, y;
 	unsigned char               *in, *out;
+	unsigned int pixel, masks[ 4 ];
+	int shifts[ 4 ], bits[ 4 ], c, hasAlpha;
 
 
 	/* setup */
 	in = dds->data;
 	out = pixels;
+
+	/* channel masks of the pixel format, in r, g, b, a order */
+	masks[ 0 ] = DDSLittleLong( dds->pixelFormat.rBitMask );
+	masks[ 1 ] = DDSLittleLong( dds->pixelFormat.gBitMask );
+	masks[ 2 ] = DDSLittleLong( dds->pixelFormat.bBitMask );
+	masks[ 3 ] = DDSLittleLong( dds->pixelFormat.rgbAlphaBitMask );
+
+	/* without any color masks there is nothing to go by, so keep copying the
+	   bytes through unchanged as before (i.e. assume r, g, b, a byte order) */
+	if ( masks[ 0 ] == 0 && masks[ 1 ] == 0 && masks[ 2 ] == 0 ) {
+		memcpy( out, in, (size_t) width * height * 4 );
+		return 0;
+	}
+
+	/* the alpha mask is only meaningful with DDPF_ALPHAPIXELS (0x1); without
+	   it the fourth byte is padding (X8R8G8B8) and the texture is opaque */
+	hasAlpha = ( DDSLittleLong( dds->pixelFormat.flags ) & 0x1 ) && masks[ 3 ] != 0;
+
+	for ( c = 0; c < 4; ++c )
+	{
+		shifts[ c ] = DDSMaskShift( masks[ c ] );
+		bits[ c ] = DDSMaskBits( masks[ c ] );
+	}
 
 	/* walk y */
 	for ( y = 0; y < height; ++y )
@@ -779,10 +851,20 @@ static int DDSDecompressARGB8888( ddsBuffer_t *dds, int width, int height, unsig
 		/* walk x */
 		for ( x = 0; x < width; ++x )
 		{
-			*out++ = *in++;
-			*out++ = *in++;
-			*out++ = *in++;
-			*out++ = *in++;
+			/* pixels are little-endian 32-bit words; assemble them byte by
+			   byte so this works regardless of host endianness */
+			pixel = (unsigned int) in[ 0 ] |
+					( (unsigned int) in[ 1 ] << 8 ) |
+					( (unsigned int) in[ 2 ] << 16 ) |
+					( (unsigned int) in[ 3 ] << 24 );
+			in += 4;
+
+			/* missing color channels come out as 0 */
+			for ( c = 0; c < 3; ++c )
+			{
+				*out++ = masks[ c ] ? DDSExtractChannel( pixel, masks[ c ], shifts[ c ], bits[ c ] ) : 0;
+			}
+			*out++ = hasAlpha ? DDSExtractChannel( pixel, masks[ 3 ], shifts[ 3 ], bits[ 3 ] ) : 0xff;
 		}
 	}
 
