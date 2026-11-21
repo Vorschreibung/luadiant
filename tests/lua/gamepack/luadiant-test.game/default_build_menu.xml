@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<!-- the editor requires a default build menu; the tests do not compile -->
+<project version="2.0">
+<var name="q3map2">"[RadiantPath]q3map2.[ExecutableType]"</var>
+<build name="bsp">
+<command>[q3map2] -meta "[MapFile]"</command>
+</build>
+</project>

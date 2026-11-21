@@ -3,7 +3,7 @@
 LuaDiant: NetRadiant-custom fork with deep LuaJIT scripting. Binary: `luadiant`.
 
 ## Goals
-- Headless: `luadiant --headless [--game NAME] script.lua [args]` to load/modify/save maps, run build tools, CI.
+- Headless: `luadiant --headless [--game NAME] [--gamepacks DIR] script.lua [args]` to load/modify/save maps, run build tools, CI.
 - Editor: Lua plugins (`lua/plugins/*/init.lua` in AppPath and SettingsPath) add actions with menus and rebindable shortcuts; Reload Scripts / Run Script.
 
 ## Approach
@@ -16,5 +16,5 @@ LuaDiant: NetRadiant-custom fork with deep LuaJIT scripting. Binary: `luadiant`.
 - Headless means no dialogs or GL: offscreen Qt, non-interactive message boxes, and prefs are not saved.
 
 ## Workflow
-- `./dev.py build`, `./dev.py test`; headless Lua tests run in CI.
+- `./dev.py build`, `./dev.py test`; headless Lua tests (`tests/lua/test_*.lua`, exit 0 = pass) use the minimal game in `tests/lua/gamepack` and run in CI.
 - One commit per finished change; comment non-trivial code.

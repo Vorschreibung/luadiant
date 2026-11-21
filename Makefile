@@ -942,6 +942,7 @@ $(INSTALLDIR)/luadiant.$(EXE): \
 	radiant/groupdialog.o \
 	radiant/gtkdlgs.o \
 	radiant/gtkmisc.o \
+	radiant/headless.o \
 	radiant/help.o \
 	radiant/image.o \
 	radiant/layerswindow.o \

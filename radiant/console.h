@@ -39,3 +39,9 @@ class QWidget* Console_constructWindow();
 
 // will open/close the log file based on the parameter
 void Sys_LogFile( bool enable );
+
+/// Switches console output to headless operation: no log file is written
+/// (so a running editor's log is not clobbered) and all messages go to
+/// stderr, keeping stdout free for the output of scripts. With `quiet`
+/// only warnings and errors are printed.
+void Sys_Console_setHeadless( bool quiet );

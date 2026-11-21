@@ -23,6 +23,8 @@
 #include "luaapi.h"
 #include "luaengine.h"
 
+#include <cstdio>
+
 #include "itextstream.h"
 #include "../mainframe.h"
 #include "../preferences.h"
@@ -68,9 +70,25 @@ int lua_writeLine( lua_State* L, TextOutputStream& stream ){
 	return 0;
 }
 
-/// luadiant.log(...) and the global print(...): prints to the console.
+/// luadiant.log(...): prints to the console.
 int l_log( lua_State* L ){
 	return lua_writeLine( L, globalOutputStream() );
+}
+
+/// The global print(...): prints to the console in the editor; headless,
+/// it writes to stdout like the standalone interpreter, while the console
+/// goes to stderr, so script output can be processed separately.
+int l_print( lua_State* L ){
+	if ( !LuaEngine_isHeadless() ) {
+		return l_log( L );
+	}
+	lua_joinArguments( L );
+	std::size_t length;
+	const char* text = lua_tolstring( L, -1, &length );
+	std::fwrite( text, 1, length, stdout );
+	std::fputc( '\n', stdout );
+	std::fflush( stdout );
+	return 0;
 }
 
 /// luadiant.warn(...): prints a warning to the console.
@@ -155,7 +173,6 @@ void LuaApi_openCore( lua_State* L ){
 	lua_pushboolean( L, LuaEngine_isHeadless() );
 	lua_setfield( L, -2, "headless" );
 
-	// route the global print through the console as well
-	lua_pushcfunction( L, l_log );
+	lua_pushcfunction( L, l_print );
 	lua_setglobal( L, "print" );
 }

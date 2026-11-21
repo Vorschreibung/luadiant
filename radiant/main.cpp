@@ -87,6 +87,8 @@
 #include "stacktrace.h"
 #include "error.h"
 #include "lua/luaengine.h"
+#include "headless.h"
+#include "console.h"
 
 #include <QApplication>
 #include "gtkutil/glwidget.h"
@@ -391,6 +393,16 @@ void remove_local_pid(){
 
 
 int main( int argc, char* argv[] ){
+	// must go first: strips the headless options and script arguments, so
+	// neither Qt nor the editor's own command line handling sees them
+	if ( int exitCode; !Headless_parseArguments( argc, argv, exitCode ) ) {
+		return exitCode;
+	}
+
+	if ( g_headless ) {
+		// no windows are ever shown, so no display is needed
+		qputenv( "QT_QPA_PLATFORM", "offscreen" );
+	}
 #ifdef __linux__
 	// Mouse pointer warping functions do not work with the Wayland backend.
 	// Forcing the backend to X11 will let us run using XWayland
@@ -401,6 +413,11 @@ int main( int argc, char* argv[] ){
 	crt_init();
 
 	streams_init();
+
+	if ( g_headless ) {
+		Sys_Console_setHeadless( Headless_quiet() );
+		qt_MessageBox_setInteractive( false );
+	}
 
 #ifdef WIN32
 	_setmaxstdio( 2048 );
@@ -425,31 +442,58 @@ int main( int argc, char* argv[] ){
 
 	paths_init();
 
-	if ( !check_version() ) {
+	// headless runs skip everything interactive: the installation check
+	// and the crash detection via .pid files (which would also interfere
+	// with an editor running at the same time)
+	if ( !g_headless && !check_version() ) {
 		return EXIT_FAILURE;
 	}
 
 	Sys_LogFile( true );
 
-	QApplication::setWindowIcon( new_local_icon( "radiant.ico" ) ); // before any windows, after paths_init()
+	if ( !g_headless ) {
+		QApplication::setWindowIcon( new_local_icon( "radiant.ico" ) ); // before any windows, after paths_init()
 
-	show_splash();
+		show_splash();
 
-	create_global_pid();
+		create_global_pid();
+	}
 
 	GlobalPreferences_Init();
 
 	g_GamesDialog.Init();
 
+	if ( g_pGameDescription == nullptr ) { // headless only, the game was not found
+		return EXIT_FAILURE;
+	}
+
 	g_strGameToolsPath = g_pGameDescription->mGameToolsPath;
 
-	remove_global_pid();
+	if ( !g_headless ) {
+		remove_global_pid();
+	}
 
 	g_Preferences.Init(); // must occur before create_local_pid() to allow preferences to be reset
 
-	create_local_pid();
+	if ( g_headless ) {
+		// scripts must not change the user's settings
+		g_preferences_globals.disable_ini = true;
+	}
+	else
+	{
+		create_local_pid();
+	}
 
 	Radiant_Initialise();
+
+	if ( g_headless ) {
+		const int exitCode = Headless_run();
+
+		Radiant_Shutdown();
+
+		qInstallMessageHandler( nullptr );
+		return exitCode;
+	}
 
 	// before the main window, so Lua plugins can register their commands
 	LuaEngine_create( false );
@@ -475,6 +519,9 @@ int main( int argc, char* argv[] ){
 
 	QApplication::exec();
 
+	// handles held by Lua reference scene nodes, release them first
+	LuaEngine_destroy();
+
 	Map_Free();
 
 	if ( !Map_Unnamed( g_map ) ) {
@@ -484,8 +531,6 @@ int main( int argc, char* argv[] ){
 	delete g_pParentWnd;
 
 //	user_shortcuts_save();
-
-	LuaEngine_destroy();
 
 	Radiant_Shutdown();
 

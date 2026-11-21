@@ -25,3 +25,8 @@
 
 /// \brief Shows a modal message-box.
 EMessageBoxReturn qt_MessageBox( class QWidget *parent, const char* text, const char* title = "NetRadiant", EMessageBoxType type = EMessageBoxType::Info, int buttons = 0 );
+
+/// With interactive = false, message boxes are not shown; their text is
+/// printed to the console and the most cautious answer is returned (used
+/// in headless mode).
+void qt_MessageBox_setInteractive( bool interactive );

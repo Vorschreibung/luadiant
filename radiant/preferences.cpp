@@ -44,6 +44,7 @@
 #include "mainframe.h"
 #include "gtkdlgs.h"
 #include "theme.h"
+#include "headless.h"
 
 #include <QCoreApplication>
 #include <QGridLayout>
@@ -70,6 +71,16 @@ void Interface_constructPreferences( PreferencesPage& page ){
    =========================================================
  */
 
+/// The directory holding the game descriptions (games/*.game) and a
+/// <name>.game/ directory with the data of each game: the installed
+/// gamepacks, unless headless mode was given another one.
+static CopiedString GamepacksPath_get(){
+	if ( g_headless && !string_empty( Headless_gamepacksPath() ) ) {
+		return CopiedString( StringStream( DirectoryCleaned( Headless_gamepacksPath() ) ) );
+	}
+	return CopiedString( StringStream( AppPath_get(), "gamepacks/" ) );
+}
+
 inline const char* xmlAttr_getName( xmlAttrPtr attr ){
 	return reinterpret_cast<const char*>( attr->name );
 }
@@ -95,7 +106,7 @@ CGameDescription::CGameDescription( xmlDocPtr pDoc, const CopiedString& gameFile
 		m_gameDescription.insert( GameDescription::value_type( xmlAttr_getName( attr ), xmlAttr_getValue( attr ) ) );
 	}
 
-	mGameToolsPath = StringStream( AppPath_get(), "gamepacks/", gameFile, '/' );
+	mGameToolsPath = StringStream( GamepacksPath_get(), gameFile, '/' );
 
 	ASSERT_MESSAGE( file_exists( mGameToolsPath.c_str() ), "game directory not found: " << Quoted( mGameToolsPath ) );
 
@@ -294,7 +305,7 @@ void CGameDialog::BuildDialog(){
 }
 
 void CGameDialog::ScanForGames(){
-	const auto path = StringStream( AppPath_get(), "gamepacks/games/" );
+	const auto path = StringStream( GamepacksPath_get(), "games/" );
 
 	globalOutputStream() << "Scanning for game description files: " << path << '\n';
 
@@ -351,6 +362,26 @@ void CGameDialog::Init(){
 	}
 
 	CGameDescription* currentGameDescription = 0;
+
+	if ( g_headless ) {
+		// never prompt: use the requested game or else the configured one
+		std::string gameFile = string_empty( Headless_game() ) ? m_sGameFile.m_value.c_str() : Headless_game();
+		if ( !string_equal_suffix_nocase( gameFile.c_str(), ".game" ) ) {
+			gameFile += ".game";
+		}
+		const auto found = std::ranges::find_if( mGames, [&gameFile]( const CGameDescription* game ){ return string_equal( game->mGameFile.c_str(), gameFile.c_str() ); } );
+		if ( found != mGames.end() ) {
+			g_pGameDescription = *found;
+			g_pGameDescription->Dump();
+		}
+		else
+		{
+			globalErrorStream() << "game " << Quoted( gameFile.c_str() ) << " not found, available games:\n";
+			for ( const CGameDescription* game : mGames )
+				globalErrorStream() << "  " << game->mGameFile << '\n';
+		}
+		return;
+	}
 
 	if ( !m_bGamePrompt ) {
 		// search by .game name
@@ -444,7 +475,9 @@ void PrefsDlg::Init(){
 	// this is common to win32 and Linux init now
 	// game sub-dir
 	m_rc_path = StringStream( m_global_rc_path, g_pGameDescription->mGameFile.c_str(), '/' );
-	Q_mkdir( m_rc_path.c_str() );
+	if ( !g_headless ) { // headless mode does not save anything there
+		Q_mkdir( m_rc_path.c_str() );
+	}
 
 	// then the ini file
 	m_inipath = StringStream( m_rc_path, PREFS_LOCAL_FILENAME );

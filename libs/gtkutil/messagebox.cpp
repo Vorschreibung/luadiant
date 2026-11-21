@@ -22,6 +22,32 @@
 #include "messagebox.h"
 #include <QMessageBox>
 
+#include "itextstream.h"
+
+namespace
+{
+bool g_messagebox_interactive = true;
+
+/// The answer given in place of the user when no dialogs may be shown:
+/// the most cautious of the offered buttons (Cancel, then No).
+EMessageBoxReturn qt_MessageBox_defaultAnswer( EMessageBoxType type, int buttons ){
+	if ( buttons == 0 ) {
+		buttons = type == EMessageBoxType::Question ? ( eIDYES | eIDNO ) : eIDOK;
+	}
+	if ( buttons & eIDCANCEL )
+		return eIDCANCEL;
+	if ( buttons & eIDNO )
+		return eIDNO;
+	if ( buttons & eIDOK )
+		return eIDOK;
+	return eIDYES;
+}
+}
+
+void qt_MessageBox_setInteractive( bool interactive ){
+	g_messagebox_interactive = interactive;
+}
+
 
 inline QMessageBox::StandardButtons qt_buttons_for_mask( int buttons ){
 	QMessageBox::StandardButtons out;
@@ -37,6 +63,14 @@ inline QMessageBox::StandardButtons qt_buttons_for_mask( int buttons ){
 }
 
 EMessageBoxReturn qt_MessageBox( QWidget *parent, const char* text, const char* title /* = "NetRadiant" */, EMessageBoxType type /* = EMessageBoxType::Info */, int buttons /* = 0 */ ){
+	if ( !g_messagebox_interactive ) {
+		TextOutputStream& stream = type == EMessageBoxType::Error ? globalErrorStream()
+		                         : type == EMessageBoxType::Warning ? globalWarningStream()
+		                         : globalOutputStream();
+		stream << title << ": " << text << '\n';
+		return qt_MessageBox_defaultAnswer( type, buttons );
+	}
+
 	QMessageBox::StandardButton ret{};
 	switch ( type )
 	{

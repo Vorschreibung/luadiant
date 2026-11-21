@@ -26,6 +26,7 @@
 //
 
 #include "mainframe.h"
+#include "headless.h"
 
 #include "debugging/debugging.h"
 #include "version.h"
@@ -461,6 +462,17 @@ PathsDialog g_PathsDialog;
 static bool g_strEnginePath_was_empty_1st_start = false;
 
 void EnginePath_verify(){
+	if ( g_headless ) {
+		// no paths dialog and no installation of dev files into the engine
+		// directory; a missing engine path only limits what can be loaded
+		if ( !string_empty( Headless_enginePath() ) ) {
+			g_strEnginePath = StringStream( DirectoryCleaned( Headless_enginePath() ) );
+		}
+		if ( !file_exists( g_strEnginePath.c_str() ) ) {
+			globalWarningStream() << "engine path " << Quoted( g_strEnginePath ) << " does not exist\n";
+		}
+		return;
+	}
 	if ( !file_exists( g_strEnginePath.c_str() ) || g_strEnginePath_was_empty_1st_start ) {
 		g_installedDevFilesPath = ""; // trigger install for non existing engine path case
 		g_PathsDialog.Create( nullptr );
@@ -549,7 +561,11 @@ void Radiant_loadModules( const char* path ){
 }
 
 void Radiant_loadModulesFromRoot( const char* directory ){
-	Radiant_loadModules( StringStream( directory, g_pluginsDir ) );
+	// the plugins only add user interface (and save their settings on exit),
+	// headless mode gets by with the core modules
+	if ( !g_headless ) {
+		Radiant_loadModules( StringStream( directory, g_pluginsDir ) );
+	}
 
 	if ( !string_equal( g_pluginsDir, g_modulesDir ) ) {
 		Radiant_loadModules( StringStream( directory, g_modulesDir ) );
@@ -805,6 +821,10 @@ void ScreenUpdates_process(){
 
 
 void ScreenUpdates_Disable( const char* message, const char* title ){
+	if ( MainFrame_getWindow() == nullptr ) { // headless, nothing to show
+		g_wait_stack.push_back( message );
+		return;
+	}
 	if ( g_wait_stack.empty() ) {
 		s_qe_every_second_timer.disable();
 
@@ -826,6 +846,9 @@ void ScreenUpdates_Disable( const char* message, const char* title ){
 void ScreenUpdates_Enable(){
 	ASSERT_MESSAGE( !ScreenUpdates_Enabled(), "screen updates already enabled" );
 	g_wait_stack.pop_back();
+	if ( g_wait.m_window == nullptr ) { // headless, no wait dialog was shown
+		return;
+	}
 	if ( g_wait_stack.empty() ) {
 		s_qe_every_second_timer.enable();
 

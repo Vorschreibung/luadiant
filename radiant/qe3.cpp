@@ -107,6 +107,9 @@ SimpleCounter g_patchCount;
 SimpleCounter g_entityCount;
 
 void QE_brushCountChange(){
+	if ( g_pParentWnd == nullptr ) { // no status bar when headless
+		return;
+	}
 	std::size_t counts[3] = { g_brushCount.get(), g_patchCount.get(), g_entityCount.get() };
 	if( GlobalSelectionSystem().countSelected() != 0 )
 		GlobalSelectionSystem().countSelectedStuff( counts[0], counts[1], counts[2] );
@@ -266,5 +269,7 @@ void Sys_SetTitle( const char *text, bool modified ){
 		title << " *";
 	}
 
-	MainFrame_getWindow()->setWindowTitle( title.c_str() );
+	if ( MainFrame_getWindow() != nullptr ) {
+		MainFrame_getWindow()->setWindowTitle( title.c_str() );
+	}
 }

@@ -45,11 +45,20 @@
 namespace
 {
 FILE* g_hLogFile;
+
+bool g_console_headless = false;
+bool g_console_quiet = false;
+}
+
+void Sys_Console_setHeadless( bool quiet ){
+	g_console_headless = true;
+	g_console_quiet = quiet;
+	Sys_LogFile( false );
 }
 
 // called whenever we need to open/close/check the console log file
 void Sys_LogFile( bool enable ){
-	if ( enable && !g_hLogFile ) {
+	if ( enable && !g_hLogFile && !g_console_headless ) {
 		// we should be logging and we don't have a log file .. so create it
 		if ( string_empty( SettingsPath_get() ) ) {
 			return; // cannot open a log file yet
@@ -137,6 +146,17 @@ public:
 
 std::size_t Sys_Print( int level, const char* buf, std::size_t length ){
 	const bool contains_newline = std::find( buf, buf + length, '\n' ) != buf + length;
+
+	if ( g_console_headless ) {
+		const bool chatter = level == SYS_STD || level == SYS_VRB;
+		if ( level != SYS_NOCON && !( g_console_quiet && chatter ) ) {
+			fwrite( buf, 1, length, stderr );
+			if ( contains_newline ) {
+				fflush( stderr );
+			}
+		}
+		return length;
+	}
 
 	if ( level == SYS_ERR ) {
 		Sys_LogFile( true );
